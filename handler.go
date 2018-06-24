@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"reflect"
 
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-// TODO: 1. Support passing in functions, instead of structs
+// TODO: 1. Support passing in functions, instead of structs - DONE
 //       2. Support modification of request/response (e.g. pass through objects?)
 //       3. ...WithContext handler wrapper? -> dah, already in the interface!! - DONE
 //       4. Logging
@@ -20,143 +19,103 @@ import (
 // https://github.com/aws/aws-lambda-go/blob/master/lambda/entry.go#L37-L49
 type LambdaFunc func(context.Context, interface{}) (interface{}, error)
 
-// Handler is the interface to serve as Middleware in Middy
-type Handler interface {
-	Handle(ctx context.Context, in interface{}, next LambdaFunc) (interface{}, error)
+type lambdaHandler func(context.Context, []byte) (interface{}, error)
+
+// Middleware is a definition of what a Middleware is,
+// take in one LambdaFunc and wrap it within another LambdaFunc
+type Middleware func(LambdaFunc) LambdaFunc
+
+// buildChain builds the middlware chain recursively, functions are first class
+func buildChain(f LambdaFunc, m ...Middleware) LambdaFunc {
+	// if our chain is done, use the original LambdaFunc
+	if len(m) == 0 {
+		return f
+	}
+	// otherwise nest the LambdaFuncs
+	return m[0](buildChain(f, m[1:cap(m)]...))
 }
 
-// HandlerFunc is an adapter to allow normal functions to act as a Handler
-type HandlerFunc func(ctx context.Context, in interface{}, next LambdaFunc) (interface{}, error)
+// Invoke calls the handler, and serializes the response.
+// If the underlying handler returned an error, or an error occurs during serialization, error is returned.
+func (handler lambdaHandler) Invoke(ctx context.Context, payload []byte) ([]byte, error) {
+	response, err := handler(ctx, payload)
+	if err != nil {
+		return nil, err
+	}
 
-// Handle implements the Handle interface for a first-class Handler
-func (h HandlerFunc) Handle(ctx context.Context, in interface{}, next LambdaFunc) (interface{}, error) {
-	return h(ctx, in, next)
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		return nil, err
+	}
+
+	return responseBytes, nil
 }
 
-// Middleware is a one-way linked list of middleware Handlers
-// This is negroni-style middleware. The linked-list gives us the ability to modify
-// the order etc. a bit more nicely than the pure functional style middleware
-type middleware struct {
-	handler Handler
-	next    *middleware
-}
-
-func (m middleware) Handle(ctx context.Context, in interface{}) (interface{}, error) {
-	return m.handler.Handle(ctx, in, m.next.Handle)
-}
-
-// Middy is a middleware adapter for Lambda Functions
-// Middleware are evaluated in the order they are added to the stack
-type Middy struct {
-	handlers   []Handler
-	middleware middleware
-}
-
-// New creates a new Middy given a set of Handlers
-func New(l interface{}, handlers ...Handler) *Middy {
-	handlers = append(handlers, wrapUserHandler(l))
-
-	return &Middy{
-		handlers:   handlers,
-		middleware: build(handlers),
+func errorHandler(e error) lambdaHandler {
+	return func(ctx context.Context, event []byte) (interface{}, error) {
+		return nil, e
 	}
 }
 
-func (m *Middy) with(f LambdaFunc) *Middy {
-	return m
-}
-
-func (m *Middy) WithType(i interface{}) *Middy {
-	return m
-}
-
-// Start is a convienence function run the lambda handler
-func (m *Middy) Start(ctx context.Context, in interface{}) {
-	lambda.Start(m.Handle())
-}
-
-// Handle yields the Lambda compatible function handler
-// with all middleware applied
-func (m *Middy) Handle() LambdaFunc {
-	return m.middleware.Handle
-}
-
-func build(handlers []Handler) middleware {
-	var next middleware
-
-	if len(handlers) == 0 {
-		fmt.Println("Adding void middleware - this means no middleware provided and is a noop")
-		return voidMiddleware()
-	} else if len(handlers) > 1 {
-		next = build(handlers[1:])
-	} else {
-		fmt.Printf("Adding void middleware - this will be linked to the wrapped handler (which will never call it)")
-		next = voidMiddleware()
+func validateReturns(handler reflect.Type) error {
+	errorType := reflect.TypeOf((*error)(nil)).Elem()
+	if handler.NumOut() > 2 {
+		return fmt.Errorf("handler may not return more than two values")
+	} else if handler.NumOut() > 1 {
+		if !handler.Out(1).Implements(errorType) {
+			return fmt.Errorf("handler returns two values, but the second does not implement error")
+		}
+	} else if handler.NumOut() == 1 {
+		if !handler.Out(0).Implements(errorType) {
+			return fmt.Errorf("handler returns a single value, but it does not implement error")
+		}
 	}
-
-	return middleware{handlers[0], &next}
+	return nil
 }
 
-func typeMiddleware() middleware {
-	return middleware{
-		HandlerFunc(func(ctx context.Context, in interface{}, next LambdaFunc) (interface{}, error) {
-			fmt.Println("Type middleware")
-			var args []reflect.Value
-			args = append(args, reflect.ValueOf(ctx))
-			args = append(args, reflect.ValueOf(in))
-			var out interface{}
+func newMiddlewareWrapper(handlerInterface interface{}, middlewareChain LambdaFunc) lambdaHandler {
+	fmt.Println("[newMiddlewareWrapper] wrapping middleware in type-preserving, Lambda-compatible shell")
 
-			if err := json.Unmarshal([]byte(`{"foo":"cached"}`), &out); err != nil {
-				return nil, err
-			}
-
-			return out, nil
-		}),
-		&middleware{},
+	if handlerInterface == nil {
+		return errorHandler(fmt.Errorf("handler is nil"))
 	}
-}
-
-func voidMiddleware() middleware {
-	return middleware{
-		HandlerFunc(func(ctx context.Context, in interface{}, next LambdaFunc) (interface{}, error) {
-			log.Fatal("Void middleware - should never be executed!")
-			return nil, nil
-		}),
-		&middleware{},
-	}
-}
-
-func wrapLambda(l LambdaFunc) Handler {
-	return HandlerFunc(func(ctx context.Context, in interface{}, next LambdaFunc) (interface{}, error) {
-		fmt.Println("Original handler")
-		res, err := l(ctx, in)
-		fmt.Printf("Response from original handler: %v, err: %v", res, err)
-		return next(ctx, in)
-	})
-}
-
-func wrapUserHandler(l interface{}) Handler {
-	// Wrap the passed in handler, as it may/should have proper argument types
-	// e.g. https://github.com/aws/aws-lambda-go/blob/master/lambda/handler.go#L75
-	handler := reflect.ValueOf(l)
-	handlerType := reflect.TypeOf(l)
+	handlerType := reflect.TypeOf(handlerInterface)
 	if handlerType.Kind() != reflect.Func {
-		// TODO: error here?
-		fmt.Printf("handler kind %s is not %s", handlerType.Kind(), reflect.Func)
+		return errorHandler(fmt.Errorf("handler kind %s is not %s", handlerType.Kind(), reflect.Func))
 	}
 
-	// Wrap the handler into a generic Handler type
-	// This handler _does not_ execute the next middleware (which should be the voidMiddleware)
-	return HandlerFunc(func(ctx context.Context, in interface{}, next LambdaFunc) (interface{}, error) {
-		fmt.Println("Wrapped lambda handler")
+	if err := validateReturns(handlerType); err != nil {
+		return errorHandler(err)
+	}
+
+	return func(ctx context.Context, payload []byte) (interface{}, error) {
+		eventType := handlerType.In(handlerType.NumIn() - 1)
+		event := reflect.New(eventType)
+
+		if err := json.Unmarshal(payload, event.Interface()); err != nil {
+			return nil, err
+		}
+
+		// TODO: Rather than call the original handler, we invoke the middleware chain
+		//       This way we have the signature that AWS needs
+		// response := handler.Call(args)
+		return middlewareChain(ctx, event.Elem().Interface())
+	}
+}
+
+func newTypedToUntypedWrapper(handlerInterface interface{}) LambdaFunc {
+	fmt.Println("[typedToUntypedWrapper] wrapping typed handler interface in MW compatible shell")
+	handler := reflect.ValueOf(handlerInterface)
+
+	return func(ctx context.Context, payload interface{}) (interface{}, error) {
+		fmt.Printf("[typedToUntypedWrapper] have payload: %+v \n", payload)
+
+		// construct arguments
 		var args []reflect.Value
 		args = append(args, reflect.ValueOf(ctx))
-		args = append(args, reflect.ValueOf(in))
+		args = append(args, reflect.ValueOf(payload))
 
-		// // convert return values into (interface{}, error)
 		response := handler.Call(args)
-		// args = append(args)
-		// response := handler.Call(reflect.ValueOf(ctx), reflect.ValueOf(in))
 
 		// convert return values into (interface{}, error)
 		var err error
@@ -170,8 +129,27 @@ func wrapUserHandler(l interface{}) Handler {
 			val = response[0].Interface()
 		}
 
-		fmt.Println("Wrapped lambda handler. Response from orig handler:", val, err)
+		return val, err
+	}
+}
 
-		return val, nil
-	})
+// Middy is a middleware adapter for Lambda Functions
+// Middleware are evaluated in the order they are added to the stack
+type Middy struct {
+	handler lambdaHandler
+}
+
+// New creates a new Middy given a set of Handlers
+func New(l interface{}, handlers ...Middleware) *Middy {
+	m := buildChain(newTypedToUntypedWrapper(l), handlers...)
+	f := newMiddlewareWrapper(l, m)
+
+	return &Middy{
+		handler: f,
+	}
+}
+
+// Start is a convienence function run the lambda handler
+func (m *Middy) Start() {
+	lambda.StartHandler(m.handler)
 }
