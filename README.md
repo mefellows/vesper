@@ -1,5 +1,11 @@
 # Vesper - Middleware for AWS Lambda
 
+## Get started
+
+```sh
+serverless create -u https://github.com/mefellows/vesper/tree/master/template
+```
+
 ## What's in a name?
 
 Golang has a rich history of naming HTTP and middleware type libraries on classy gin-based beverages (think Gin, Martini and Negroni). Vesper is yet another gin-based beverage.

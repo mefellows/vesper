@@ -14,7 +14,7 @@ type User struct {
 
 // MyHandler implements the Lambda Handler interface
 func MyHandler(ctx context.Context, u User) (interface{}, error) {
-	fmt.Println("[actual handler]: Starte. Username: ", u.Username)
+	fmt.Println("[actual handler]: Start. Username: ", u.Username)
 
 	return u.Username, nil
 }
