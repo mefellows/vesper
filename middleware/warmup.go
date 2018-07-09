@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 
 	"github.com/mefellows/vesper"
@@ -28,9 +27,8 @@ type warmupEvent struct {
 var WarmupMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
 	return func(ctx context.Context, in interface{}) (interface{}, error) {
 		log.Println("[warmupMiddleware] start")
-		if v := ctx.Value(vesper.PAYLOAD{}); v != nil {
-			var event warmupEvent
-			json.Unmarshal(v.([]byte), &event)
+		var event warmupEvent
+		if err := vesper.ExtractType(ctx, &event); err == nil {
 			if event.Event.Source == "serverless-plugin-warmup" {
 				log.Println("[warmupMiddleware] warmup event detected, exiting")
 				return "warmup", nil

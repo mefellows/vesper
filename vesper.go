@@ -1,7 +1,11 @@
 package vesper
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"os"
+	"reflect"
 
 	"log"
 
@@ -34,4 +38,31 @@ func (v *Vesper) Start() {
 // WithLogger sets the log instance to use
 func (v *Vesper) WithLogger(log *log.Logger) {
 	v.log = log
+}
+
+// ExtractType fetches the original invocation payload (as a []byte)
+// and converts it to the given narrow type
+// This is useful for situations where a function is invoked from multiple
+// contexts (e.g. warmup, http, S3 events) and handlers/middlewares need to be strongly
+// typed
+func ExtractType(ctx context.Context, in interface{}) error {
+	t := reflect.TypeOf(in)
+
+	if t != nil && t.Name() != "interface" {
+		if v := ctx.Value(PAYLOAD{}); v != nil {
+			err := json.Unmarshal(v.([]byte), &in)
+			if err != nil {
+				return extractError(t.Name(), err)
+			}
+			return nil
+		} else {
+			return extractError(t.Name(), nil)
+		}
+	}
+
+	return extractError(t.Name(), nil)
+}
+
+func extractError(t string, e error) error {
+	return fmt.Errorf("unable to narrow type to %v: %v", t, e)
 }

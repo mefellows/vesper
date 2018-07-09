@@ -30,6 +30,8 @@ func buildChain(f LambdaFunc, m ...Middleware) LambdaFunc {
 	return m[0](buildChain(f, m[1:cap(m)]...))
 }
 
+// newMiddlewareWrapper takes the middleware chain, and converts it into
+// a Lambda-compatible interface
 func newMiddlewareWrapper(handlerInterface interface{}, middlewareChain LambdaFunc) lambdaHandler {
 	if handlerInterface == nil {
 		return errorHandler(fmt.Errorf("handler is nil"))
@@ -54,18 +56,17 @@ func newMiddlewareWrapper(handlerInterface interface{}, middlewareChain LambdaFu
 			return nil, err
 		}
 
-		// TODO: Rather than call the original handler, we invoke the middleware chain
-		//       This way we have the signature that AWS needs
-		// response := handler.Call(args)
 		return middlewareChain(newCtx, event.Elem().Interface())
 	}
 }
 
+// newTypedToUntypedWrapper takes a typed handler function
+// and converts it into a Middleware-compatible function
 func newTypedToUntypedWrapper(handlerInterface interface{}) LambdaFunc {
 	handler := reflect.ValueOf(handlerInterface)
 
 	return func(ctx context.Context, payload interface{}) (interface{}, error) {
-		fmt.Printf("[typedToUntypedWrapper] have payload: %+v \n", payload)
+		log.Printf("[typedToUntypedWrapper] have payload: %+v \n", payload)
 
 		// construct arguments
 		var args []reflect.Value
