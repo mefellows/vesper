@@ -34,7 +34,14 @@ cd myservice
 GOOS=linux go build -o bin/main
 ```
 
-3.  Deploy!
+3. Test Locally
+
+```
+sls invoke local -f hello -d '{ "Event": { "source": "serverless-plugin-warmup" } }'
+sls invoke local -f hello --data '{"Username": "me", "Password":"securething"}'
+```
+
+4.  Deploy!
 
 ```
 serverless deploy

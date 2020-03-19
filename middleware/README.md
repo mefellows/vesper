@@ -5,5 +5,6 @@ Implements a warmup handler for https://www.npmjs.com/package/serverless-plugin-
 Example invocation for `fn`:
 
 ```
-sls invoke -f fn -d '{ "Event": { "source": "serverless-plugin-warmup" } }'
+GOOS=linux go build -o bin/main
+sls invoke local -f hello --data '{"Username": "me", "Password":"securething"}'
 ```

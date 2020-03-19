@@ -12,7 +12,7 @@ import (
 // as a []byte
 type PAYLOAD struct{}
 
-// LambdaFunc is (long-form) of the Lambda handler interface
+// LambdaFunc is the long-form of the Lambda handler interface
 // https://github.com/aws/aws-lambda-go/blob/master/lambda/entry.go#L37-L49
 type LambdaFunc func(context.Context, interface{}) (interface{}, error)
 
@@ -28,6 +28,26 @@ func buildChain(f LambdaFunc, m ...Middleware) LambdaFunc {
 	}
 	// otherwise nest the LambdaFuncs
 	return m[0](buildChain(f, m[1:cap(m)]...))
+}
+
+func typedMiddleware(m interface{}) LambdaFunc {
+	// Extract out first parameter
+
+	// wrap in untyped interface (call existing wrapper?)
+
+	handler := reflect.ValueOf(m)
+	log.Println("[**typedMiddleware] ", handler)
+
+	return func(ctx context.Context, payload interface{}) (interface{}, error) {
+		log.Printf("[**typedMiddleware] have payload: %+v \n", payload)
+
+		// construct arguments
+		var args []reflect.Value
+		args = append(args, reflect.ValueOf(ctx))
+		args = append(args, reflect.ValueOf(payload))
+
+		return nil, nil
+	}
 }
 
 // newMiddlewareWrapper takes the middleware chain, and converts it into

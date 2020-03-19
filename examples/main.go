@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"log"
+
 	"github.com/mefellows/vesper"
 	"github.com/mefellows/vesper/middleware"
 )
 
-// Typed interface for testing
 type User struct {
 	Username string
 	Password string
@@ -16,16 +17,28 @@ type User struct {
 
 // MyHandler implements the Lambda Handler interface
 func MyHandler(ctx context.Context, u User) (interface{}, error) {
-	fmt.Println("[actual handler]: Start. Username: ", u.Username)
+	log.Println("[actual handler]: Have User %+v\n", u)
 
 	return u.Username, nil
+}
+
+var correlationIDMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
+	return func(ctx context.Context, in interface{}) (interface{}, error) {
+		log.Println("[correlationIdMiddleware] start")
+
+		res, err := f(ctx, in)
+
+		log.Println("[correlationIdMiddleware] END")
+
+		return res, err
+	}
 }
 
 var authMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
 	// one time scope setup area for middleware
 
 	return func(ctx context.Context, in interface{}) (interface{}, error) {
-		fmt.Println("[authMiddleware] start: ", in)
+		log.Println("[authMiddleware] start: ", in)
 		user := in.(User)
 		if user.Username == "fail" {
 			error := map[string]string{
@@ -35,7 +48,7 @@ var authMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
 		}
 
 		res, err := f(ctx, in)
-		fmt.Println("[authMiddleware] END: ", res)
+		log.Println("[authMiddleware] END: ", res)
 
 		return res, err
 	}
@@ -45,15 +58,15 @@ var dummyMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
 	// one time scope setup area for middleware
 
 	return func(ctx context.Context, in interface{}) (interface{}, error) {
-		fmt.Println("[dummyMiddleware] start: ", in)
+		log.Println("[dummyMiddleware] start: ", in)
 		res, err := f(ctx, in)
-		fmt.Println("[dummyMiddleware] END: ", res)
+		log.Println("[dummyMiddleware] END: ", res)
 
 		return res, err
 	}
 }
 
 func main() {
-	m := vesper.New(MyHandler, middleware.WarmupMiddleware)
+	m := vesper.New(MyHandler, middleware.WarmupMiddleware, correlationIDMiddleware, dummyMiddleware, authMiddleware)
 	m.Start()
 }

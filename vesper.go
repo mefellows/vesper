@@ -55,9 +55,8 @@ func ExtractType(ctx context.Context, in interface{}) error {
 				return extractError(t.Name(), err)
 			}
 			return nil
-		} else {
-			return extractError(t.Name(), nil)
 		}
+		return extractError(t.Name(), nil)
 	}
 
 	return extractError(t.Name(), nil)
