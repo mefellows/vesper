@@ -68,7 +68,8 @@ func newMiddlewareWrapper(handlerInterface interface{}, middlewareChain LambdaFu
 
 	return func(ctx context.Context, payload []byte) (interface{}, error) {
 		log.Println("[newMiddlewareWrapper] wrapped function handler")
-		newCtx := context.WithValue(ctx, PAYLOAD{}, payload)
+		newCtx := context.WithValue(ctx, ctxKeyPayload, payload)
+		newCtx = context.WithValue(newCtx, ctxKeyHandlerSignature, handlerType)
 		eventType := handlerType.In(handlerType.NumIn() - 1)
 		event := reflect.New(eventType)
 
