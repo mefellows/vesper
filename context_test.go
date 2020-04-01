@@ -26,11 +26,14 @@ func TestPayloadFromContext(t *testing.T) {
 }
 
 func TestHandlerSignatureFromContext(t *testing.T) {
+	type user struct {
+		Name string
+	}
 	called := false
-	v := New(func(ctx context.Context, i interface{}) error {
+	v := New(func(ctx context.Context, u user) error {
 		sig, ok := HandlerSignatureFromContext(ctx)
 		assert.True(t, ok)
-		assert.Equal(t, "func(context.Context, interface {}) error", sig.String())
+		assert.Equal(t, "func(context.Context, vesper.user) error", sig.String())
 		called = true
 		return nil
 	})
