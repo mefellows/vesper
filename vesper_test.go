@@ -163,31 +163,33 @@ func TestHandler(t *testing.T) {
 	})
 
 	t.Run("middlewares provided", func(t *testing.T) {
+
+		newTestMiddleware := func(name string) func(LambdaFunc) LambdaFunc {
+			return func(next LambdaFunc) LambdaFunc {
+				return func(ctx context.Context, i interface{}) (interface{}, error) {
+					return next(context.WithValue(ctx, name, name), i)
+				}
+			}
+		}
+
+		checkMiddlewareCalled := func(ctx context.Context, name string) bool {
+			return ctx.Value(name) != nil
+		}
+
 		t.Run("no error", func(t *testing.T) {
-			callCount := 0
-			m1 := func(next LambdaFunc) LambdaFunc {
-				return func(ctx context.Context, in interface{}) (interface{}, error) {
-					assert.Equal(t, 0, callCount)
-					callCount++
-					return next(ctx, in)
-				}
-			}
-			m2 := func(next LambdaFunc) LambdaFunc {
-				return func(ctx context.Context, in interface{}) (interface{}, error) {
-					assert.Equal(t, 1, callCount)
-					callCount++
-					return next(ctx, in)
-				}
-			}
-			h := func(context.Context, interface{}) (int, error) {
-				assert.Equal(t, 2, callCount)
-				callCount++
+			outerCtx := context.Background()
+			handlerCalled := false
+			h := func(ctx context.Context, i interface{}) (int, error) {
+				handlerCalled = true
+				outerCtx = ctx
 				return 1, nil
 			}
-			v := New(h, m1, m2)
-			rsp, err := v.handler.Invoke(context.Background(), []byte("{}"))
-			assert.Equal(t, 3, callCount)
+			v := New(h, newTestMiddleware("m1"), newTestMiddleware("m2"))
+			rsp, err := v.handler.Invoke(outerCtx, []byte("{}"))
 			assert.Equal(t, []byte("1"), rsp)
+			assert.True(t, checkMiddlewareCalled(outerCtx, "m1"))
+			assert.True(t, checkMiddlewareCalled(outerCtx, "m2"))
+			assert.True(t, handlerCalled)
 			assert.NoError(t, err)
 		})
 		t.Run("error from middleware", func(t *testing.T) {
@@ -211,27 +213,18 @@ func TestHandler(t *testing.T) {
 			assert.Error(t, err)
 		})
 		t.Run("error from handler", func(t *testing.T) {
-			callCount := 0
-			m1 := func(next LambdaFunc) LambdaFunc {
-				return func(ctx context.Context, in interface{}) (interface{}, error) {
-					callCount++
-					return next(ctx, in)
-				}
-			}
-			m2 := func(next LambdaFunc) LambdaFunc {
-				return func(ctx context.Context, in interface{}) (interface{}, error) {
-					callCount++
-					return next(ctx, in)
-				}
-			}
-			h := func(context.Context, interface{}) (int, error) {
-				assert.Equal(t, 2, callCount)
-				callCount++
+			outerCtx := context.Background()
+			handlerCalled := false
+			h := func(ctx context.Context, i interface{}) (int, error) {
+				outerCtx = ctx
+				handlerCalled = true
 				return 0, errors.New("something happened")
 			}
-			v := New(h, m1, m2)
-			_, err := v.handler.Invoke(context.Background(), []byte("{}"))
-			assert.Equal(t, 3, callCount)
+			v := New(h, newTestMiddleware("m1"), newTestMiddleware("m2"))
+			_, err := v.handler.Invoke(outerCtx, []byte("{}"))
+			assert.True(t, checkMiddlewareCalled(outerCtx, "m1"))
+			assert.True(t, checkMiddlewareCalled(outerCtx, "m2"))
+			assert.True(t, handlerCalled)
 			assert.Error(t, err)
 		})
 	})
