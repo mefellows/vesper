@@ -3,7 +3,6 @@ package vesper
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"reflect"
 )
@@ -30,59 +29,51 @@ func buildChain(f LambdaFunc, m ...Middleware) LambdaFunc {
 	return m[0](buildChain(f, m[1:cap(m)]...))
 }
 
-func typedMiddleware(m interface{}) LambdaFunc {
-	// Extract out first parameter
-
-	// wrap in untyped interface (call existing wrapper?)
-
-	handler := reflect.ValueOf(m)
-	log.Println("[**typedMiddleware] ", handler)
-
-	return func(ctx context.Context, payload interface{}) (interface{}, error) {
-		log.Printf("[**typedMiddleware] have payload: %+v \n", payload)
-
-		// construct arguments
-		var args []reflect.Value
-		args = append(args, reflect.ValueOf(ctx))
-		args = append(args, reflect.ValueOf(payload))
-
-		return nil, nil
-	}
-}
-
 // newMiddlewareWrapper takes the middleware chain, and converts it into
 // a Lambda-compatible interface
 func newMiddlewareWrapper(handlerInterface interface{}, middlewareChain LambdaFunc) lambdaHandler {
-	if handlerInterface == nil {
-		return errorHandler(fmt.Errorf("handler is nil"))
-	}
-
-	handlerType := reflect.TypeOf(handlerInterface)
-	if handlerType.Kind() != reflect.Func {
-		return errorHandler(fmt.Errorf("handler kind %s is not %s", handlerType.Kind(), reflect.Func))
-	}
-
-	if err := validateReturns(handlerType); err != nil {
+	handlerType, err := handlerType(handlerInterface)
+	if err != nil {
 		return errorHandler(err)
 	}
+	takesContext := handlerTakesContext(handlerType)
 
 	return func(ctx context.Context, payload []byte) (interface{}, error) {
 		log.Println("[newMiddlewareWrapper] wrapped function handler")
-		newCtx := context.WithValue(ctx, PAYLOAD{}, payload)
-		eventType := handlerType.In(handlerType.NumIn() - 1)
-		event := reflect.New(eventType)
 
-		if err := json.Unmarshal(payload, event.Interface()); err != nil {
-			return nil, err
+		ctx = context.WithValue(ctx, PAYLOAD{}, payload)
+		var event interface{}
+		if (!takesContext && handlerType.NumIn() == 1) || handlerType.NumIn() == 2 {
+			eventType := handlerType.In(handlerType.NumIn() - 1)
+			evt := reflect.New(eventType)
+
+			if err := json.Unmarshal(payload, evt.Interface()); err != nil {
+				return nil, err
+			}
+			event = evt.Elem().Interface()
 		}
 
-		return middlewareChain(newCtx, event.Elem().Interface())
+		return middlewareChain(ctx, event)
 	}
 }
 
 // newTypedToUntypedWrapper takes a typed handler function
 // and converts it into a Middleware-compatible function
 func newTypedToUntypedWrapper(handlerInterface interface{}) LambdaFunc {
+	errLambdaFunc := func(err error) func(context.Context, interface{}) (interface{}, error) {
+		return func(context.Context, interface{}) (interface{}, error) {
+			return nil, err
+		}
+	}
+
+	if err := validateHandlerFunc(handlerInterface); err != nil {
+		return errLambdaFunc(err)
+	}
+	handlerType, err := handlerType(handlerInterface)
+	if err != nil {
+		return errLambdaFunc(err)
+	}
+	takesContext := handlerTakesContext(handlerType)
 	handler := reflect.ValueOf(handlerInterface)
 
 	return func(ctx context.Context, payload interface{}) (interface{}, error) {
@@ -90,8 +81,12 @@ func newTypedToUntypedWrapper(handlerInterface interface{}) LambdaFunc {
 
 		// construct arguments
 		var args []reflect.Value
-		args = append(args, reflect.ValueOf(ctx))
-		args = append(args, reflect.ValueOf(payload))
+		if takesContext {
+			args = append(args, reflect.ValueOf(ctx))
+		}
+		if (!takesContext && handlerType.NumIn() == 1) || handlerType.NumIn() == 2 {
+			args = append(args, reflect.ValueOf(payload))
+		}
 
 		response := handler.Call(args)
 
