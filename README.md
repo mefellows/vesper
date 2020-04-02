@@ -24,6 +24,7 @@ The Golang Middleware engine for AWS Lambda.
   - [TODO](#todo)
   - [Developer Documentation](#developer-documentation)
     - [Goals](#goals)
+    - [Contributing](#contributing)
   - [What's in a name?](#whats-in-a-name)
 
 <!-- /TOC -->
@@ -33,6 +34,12 @@ The Golang Middleware engine for AWS Lambda.
 Vesper is a very simple middleware engine for Lamda functions. If you are used to HTTP Web frameworks like Gorilla Mux and Go Kit, then you will be familiar with the concepts adopted in Vesper.
 
 Middleware allows developers to isolate common technical concerns - such as input/output validation, logging and error handling - into functions that *decorate* the main business logic. This enables you to reuse these focus on writing code that remains clean, readable and easy to test and maintain.
+
+<p align="center">
+  <a href="https://asciinema.org/a/180671">
+    <img width="880" src="https://raw.githubusercontent.com/mefellows/vesper/master/docs/demo.svg?sanitize=true">
+  </a>
+</p>
 
 ## Get started
 
