@@ -7,10 +7,6 @@ import (
 	"reflect"
 )
 
-// PAYLOAD is the context key to retrieve the original request payload
-// as a []byte
-type PAYLOAD struct{}
-
 // LambdaFunc is the long-form of the Lambda handler interface
 // https://github.com/aws/aws-lambda-go/blob/master/lambda/entry.go#L37-L49
 type LambdaFunc func(context.Context, interface{}) (interface{}, error)
@@ -42,10 +38,10 @@ func newMiddlewareWrapper(handlerInterface interface{}, middlewareChain LambdaFu
 		log.Println("[newMiddlewareWrapper] wrapped function handler")
 
 		ctx = context.WithValue(ctx, ctxKeyPayload, payload)
-		ctx = context.WithValue(ctx, ctxKeyHandlerSignature, handlerType)
 		var event interface{}
 		if (!takesContext && handlerType.NumIn() == 1) || handlerType.NumIn() == 2 {
 			eventType := handlerType.In(handlerType.NumIn() - 1)
+			ctx = context.WithValue(ctx, ctxKeyTIn, eventType)
 			evt := reflect.New(eventType)
 
 			if err := json.Unmarshal(payload, evt.Interface()); err != nil {

@@ -26,19 +26,32 @@ func TestPayloadFromContext(t *testing.T) {
 	assert.True(t, called)
 }
 
-func TestHandlerSignatureFromContext(t *testing.T) {
-	type user struct {
-		Name string
-	}
-	called := false
-	v := New(func(ctx context.Context, u user) error {
-		sig, ok := HandlerSignatureFromContext(ctx)
-		assert.True(t, ok)
-		assert.IsType(t, reflect.TypeOf(user{}), sig.In(1))
-		assert.Equal(t, "func(context.Context, vesper.user) error", sig.String())
-		called = true
-		return nil
+func TestTInFromContext(t *testing.T) {
+	t.Run("no TIn in handler signature", func(t *testing.T) {
+		called := false
+		v := New(func(ctx context.Context) error {
+			_, ok := TInFromContext(ctx)
+			assert.False(t, ok)
+			called = true
+			return nil
+		})
+		_, _ = v.handler.Invoke(context.Background(), []byte("{}"))
+		assert.True(t, called)
 	})
-	_, _ = v.handler.Invoke(context.Background(), []byte("{}"))
-	assert.True(t, called)
+
+	t.Run("TIn in handler signature", func(t *testing.T) {
+		type user struct {
+			Name string
+		}
+		called := false
+		v := New(func(ctx context.Context, u user) error {
+			tIn, ok := TInFromContext(ctx)
+			assert.True(t, ok)
+			assert.Equal(t, reflect.TypeOf(user{}), tIn)
+			called = true
+			return nil
+		})
+		_, _ = v.handler.Invoke(context.Background(), []byte("{}"))
+		assert.True(t, called)
+	})
 }
