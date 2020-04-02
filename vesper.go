@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-var log LogPrinter = NoOpPrinter{}
+var log logPrinter = noOpPrinter{}
 
 // Vesper is a middleware adapter for Lambda Functions
 type Vesper struct {
@@ -33,7 +33,7 @@ func (v *Vesper) Start() {
 }
 
 // Logger sets the log to use
-func Logger(l LogPrinter) {
+func Logger(l logPrinter) {
 	log = l
 }
 

@@ -1,15 +1,15 @@
 package vesper
 
-type LogPrinter interface {
+type logPrinter interface {
 	Print(v ...interface{})
 	Printf(format string, v ...interface{})
 	Println(v ...interface{})
 }
 
-type NoOpPrinter struct{}
+type noOpPrinter struct{}
 
-func (n NoOpPrinter) Print(...interface{}) {}
+func (n noOpPrinter) Print(...interface{}) {}
 
-func (n NoOpPrinter) Printf(string, ...interface{}) {}
+func (n noOpPrinter) Printf(string, ...interface{}) {}
 
-func (n NoOpPrinter) Println(...interface{}) {}
+func (n noOpPrinter) Println(...interface{}) {}
