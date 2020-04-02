@@ -2,5 +2,5 @@
 
 ```
 GOOS=linux go build -o bin/main
-sls invoke local -f hello --data '{"Username": "me", "Password":"securething"}'
+sls invoke local -f middleware --data '{"Username": "me", "Password":"securething"}'
 ```

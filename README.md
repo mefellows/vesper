@@ -168,7 +168,7 @@ order of execution:
  - `middleware2` (after)
  - `middleware1` (after)
 
-Notice that in the `after` phase, middlewares are executed in inverted order,
+Notice that in the `after` phase, middlewares are executed in reverse order,
 this way the first handler attached is the one with the highest priority as it will
 be the first able to change the request and last able to modify the response before
 it gets sent to the user.
@@ -177,9 +177,9 @@ it gets sent to the user.
 
 Some middlewares might need to stop the whole execution flow and return a response immediately.
 
-If you want to do this you can invoke handler.callback in your middleware and return early without invoking next.
+If you want to do this you cansimple omit invoking `next` middleware and return early.
 
-*Note*: this will totally stop the execution of successive middlewares in any phase (before and after) and returns an early response (or an error) directly at the Lambda level. If your middlewares do a specific task on every request like output serialization or error handling, these won't be invoked in this case.
+*Note*: this will stop the execution of successive middlewares in any phase (before and after) and returns an early response (or an error) directly at the Lambda level. If your middlewares does a specific task on every request like output serialization or error handling, these won't be invoked in this case.
 
 In this example we can use this capability for rejecting an unauthorised request:
 
@@ -207,14 +207,14 @@ var authMiddleware = func(next vesper.LambdaFunc) vesper.LambdaFunc {
 
 ## TODO
 
-* [] Cleanup interface / write tests for Vesper
-* [] Setup CI
-* [] Implement HandlerSignatureMiddleware
-* [] Implement Typed Record Handler Middleware for SQS
-* [] Implement Typed Record Handler Middleware for Kinesis
-* [] Implement Typed Record Handler Middleware for SNS
-* [] Write / Publish documentation
-* [] Integrate / demo with lambda starter kit (using Message structure proposal)
+- [ ] Cleanup interface / write tests for Vesper
+- [ ] Setup CI
+- [ ] Implement HandlerSignatureMiddleware
+- [ ] Implement Typed Record Handler Middleware for SQS
+- [ ] Implement Typed Record Handler Middleware for Kinesis
+- [ ] Implement Typed Record Handler Middleware for SNS
+- [ ] Write / Publish documentation
+- [ ] Integrate / demo with lambda starter kit (using Message structure proposal)
 
 ## Developer Documentation
 
