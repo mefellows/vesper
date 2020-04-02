@@ -48,8 +48,8 @@ func ExtractType(ctx context.Context, in interface{}) error {
 	t := reflect.TypeOf(in)
 
 	if t != nil && t.Name() != "interface" {
-		if v := ctx.Value(PAYLOAD{}); v != nil {
-			err := json.Unmarshal(v.([]byte), &in)
+		if v, ok := PayloadFromContext(ctx); ok {
+			err := json.Unmarshal(v, &in)
 			if err != nil {
 				return extractError(t.Name(), err)
 			}
