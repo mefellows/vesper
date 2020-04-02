@@ -32,6 +32,46 @@ func errorHandler(e error) lambdaHandler {
 	}
 }
 
+func validateHandlerFunc(handlerInterface interface{}) error {
+	handlerType, err := handlerType(handlerInterface)
+	if err != nil {
+		return err
+	}
+	if err := validateArguments(handlerType); err != nil {
+		return err
+	}
+	if err := validateReturns(handlerType); err != nil {
+		return err
+	}
+	return nil
+}
+
+func handlerType(handlerInterface interface{}) (reflect.Type, error) {
+	if handlerInterface == nil {
+		return nil, fmt.Errorf("handler is nil")
+	}
+	handlerType := reflect.TypeOf(handlerInterface)
+	if handlerType.Kind() != reflect.Func {
+		return nil, fmt.Errorf("handler kind %s is not %s", handlerType.Kind(), reflect.Func)
+	}
+	return handlerType, nil
+}
+
+func validateArguments(handler reflect.Type) error {
+	if handler.NumIn() > 2 {
+		return fmt.Errorf("handlers may not take more than two arguments, but handler takes %d", handler.NumIn())
+	} else if handler.NumIn() > 0 {
+		contextType := reflect.TypeOf((*context.Context)(nil)).Elem()
+		argumentType := handler.In(0)
+		handlerTakesContext := argumentType.Implements(contextType)
+		if handler.NumIn() > 1 && !handlerTakesContext {
+			return fmt.Errorf("handler takes two arguments, but the first is not Context. got %s", argumentType.Kind())
+		}
+	}
+
+	return nil
+}
+
 func validateReturns(handler reflect.Type) error {
 	errorType := reflect.TypeOf((*error)(nil)).Elem()
 	if handler.NumOut() > 2 {
@@ -46,4 +86,13 @@ func validateReturns(handler reflect.Type) error {
 		}
 	}
 	return nil
+}
+
+func handlerTakesContext(handlerType reflect.Type) bool {
+	if handlerType.NumIn() > 0 {
+		contextType := reflect.TypeOf((*context.Context)(nil)).Elem()
+		argumentType := handlerType.In(0)
+		return argumentType.Implements(contextType)
+	}
+	return false
 }

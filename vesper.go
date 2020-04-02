@@ -4,24 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"reflect"
-
-	"log"
 
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
 // Vesper is a middleware adapter for Lambda Functions
-// Middleware are evaluated in the order they are added to the stack
 type Vesper struct {
 	handler lambdaHandler
 	log     *log.Logger
 }
 
 // New creates a new Vesper instance given a Handler and set of Middleware
-func New(l interface{}, handlers ...Middleware) *Vesper {
-	m := buildChain(newTypedToUntypedWrapper(l), handlers...)
+// Middlewares are evaluated in the order they are provided
+func New(l interface{}, middlewares ...Middleware) *Vesper {
+	m := buildChain(newTypedToUntypedWrapper(l), middlewares...)
 	f := newMiddlewareWrapper(l, m)
 
 	return &Vesper{
@@ -30,7 +29,7 @@ func New(l interface{}, handlers ...Middleware) *Vesper {
 	}
 }
 
-// Start is a convienence function run the lambda handler
+// Start is a convenience function run the lambda handler
 func (v *Vesper) Start() {
 	lambda.StartHandler(v.handler)
 }
