@@ -29,6 +29,7 @@ var dummyMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
 }
 
 func main() {
-	m := vesper.New(MyHandler, dummyMiddleware).WithLogger(log.New(os.Stdout, "", log.LstdFlags))
+	m := vesper.New(MyHandler, dummyMiddleware)
+	vesper.Logger(log.New(os.Stdout, "", log.LstdFlags))
 	m.Start()
 }
