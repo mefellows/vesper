@@ -2,6 +2,7 @@ package vesper
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,15 +26,15 @@ func TestPayloadFromContext(t *testing.T) {
 	assert.True(t, called)
 }
 
-func TestHandlerSignatureFromContext(t *testing.T) {
+func TestTInFromContext(t *testing.T) {
 	type user struct {
 		Name string
 	}
 	called := false
 	v := New(func(ctx context.Context, u user) error {
-		sig, ok := HandlerSignatureFromContext(ctx)
+		tIn, ok := TInFromContext(ctx)
 		assert.True(t, ok)
-		assert.Equal(t, "func(context.Context, vesper.user) error", sig.String())
+		assert.Equal(t, reflect.TypeOf(user{}), tIn)
 		called = true
 		return nil
 	})
