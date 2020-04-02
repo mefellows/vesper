@@ -92,16 +92,16 @@ var dummyMiddleware = func(next vesper.LambdaFunc) vesper.LambdaFunc {
 	// one time scope setup area for middleware - e.g. in-memory FIFO cache
 
 	return func(ctx context.Context, in interface{}) (interface{}, error) {
-    log.Println("[dummyMiddleware] START:")
-    // (1) Modify the incoming request, or update the context before passing to the
-    // next middleware in the chain
-    // (2) You must call the next middleware in the chain if the request should proceed
-    // and you want other middleware to execute
-    res, err := next(ctx, in)
-    // (3) Your last chance to modify the response before it is passed to any remaining
-    // middleware in the chain
-    log.Println("[dummyMiddleware] END:", in)
-    return res, err
+		log.Println("[dummyMiddleware] START:")
+		// (1) Modify the incoming request, or update the context before passing to the
+		// next middleware in the chain
+		// (2) You must call the next middleware in the chain if the request should proceed
+		// and you want other middleware to execute
+		res, err := next(ctx, in)
+		// (3) Your last chance to modify the response before it is passed to any remaining
+		// middleware in the chain
+		log.Println("[dummyMiddleware] END:", in)
+		return res, err
 	}
 }
 ```
@@ -187,15 +187,12 @@ var authMiddleware = func(next vesper.LambdaFunc) vesper.LambdaFunc {
 		if user.Username == "fail" {
 			error := map[string]string{
 				"error": "unauthorised",
-      }
-
-      // NOTE: we do not call the "next" middleware, and completely prevent execution of subsequent middlewares
+			}
+			// NOTE: we do not call the "next" middleware, and completely prevent execution of subsequent middlewares
 			return error, fmt.Errorf("user %v is unauthorised", in)
 		}
-
 		res, err := next(ctx, in)
 		log.Printf("[authMiddleware] END: %+v \n", in)
-
 		return res, err
 	}
 }
