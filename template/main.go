@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 
 	"github.com/mefellows/vesper"
 )
@@ -28,6 +29,6 @@ var dummyMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
 }
 
 func main() {
-	m := vesper.New(MyHandler, dummyMiddleware)
+	m := vesper.New(MyHandler, dummyMiddleware).WithLogger(log.New(os.Stdout, "", log.LstdFlags))
 	m.Start()
 }

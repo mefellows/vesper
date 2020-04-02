@@ -3,15 +3,27 @@
 <!-- TOC -->
 
 - [Vesper - Middleware for AWS Lambda](#vesper---middleware-for-aws-lambda)
+  - [Principles](#principles)
   - [Get started](#get-started)
   - [API](#api)
     - [Usage](#usage)
     - [Logging](#logging)
   - [Middleware](#middleware)
     - [Warmup](#warmup)
+  - [TODO](#todo)
   - [What's in a name?](#whats-in-a-name)
 
 <!-- /TOC -->
+
+## Principles
+
+1. Keep Vesper as middleware library only
+1. Compatibility with the AWS Go SDK interface to ensure seamless integration with tools like SAM, Serverless, 1ocal testing and so on, as well as reduce cognitive overload forusers
+1. Preserve type safety and encourage the use of types
+1. Allow user to controls message batch semantics (e.g. ability to control concurrency)
+1. Be comprehensible / avoid magic
+1. Enable/Allow use of user-defined messages structures
+
 
 ## Get started
 
@@ -64,6 +76,17 @@ func main() {
 	m.Start()
 }
 ```
+## TODO
+
+TODO
+* [] Cleanup interface / write tests for Vesper
+* [] Setup CI
+* [] Implement HandlerSignatureMiddleware
+* [] Implement Typed Record Handler Middleware for SQS
+* [] Implement Typed Record Handler Middleware for Kinesis
+* [] Implement Typed Record Handler Middleware for SNS
+* [] Write / Publish documentation
+* [] Integrate / demo with lambda starter kit (using Message structure proposal)
 
 ## What's in a name?
 
