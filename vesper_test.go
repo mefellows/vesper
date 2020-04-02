@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/aws/aws-lambda-go/events"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -81,7 +83,7 @@ func TestHandler(t *testing.T) {
 			},
 			{
 				name: "func(TIn)error",
-				handlerFunc: func(int) error {
+				handlerFunc: func(events.SQSEvent) error {
 					return nil
 				},
 			},
@@ -93,7 +95,7 @@ func TestHandler(t *testing.T) {
 			},
 			{
 				name: "func(TIn)(TOut,error)",
-				handlerFunc: func(int) (int, error) {
+				handlerFunc: func(events.SQSEvent) (int, error) {
 					return 0, nil
 				},
 			},
@@ -105,7 +107,7 @@ func TestHandler(t *testing.T) {
 			},
 			{
 				name: "func(context.Context,TIn)error",
-				handlerFunc: func(context.Context, int) error {
+				handlerFunc: func(context.Context, events.SQSEvent) error {
 					return nil
 				},
 			},
@@ -117,7 +119,7 @@ func TestHandler(t *testing.T) {
 			},
 			{
 				name: "func(context.Context,TIn)(TOut,error)",
-				handlerFunc: func(context.Context, int) (int, error) {
+				handlerFunc: func(context.Context, events.SQSEvent) (int, error) {
 					return 0, nil
 				},
 			},
@@ -125,7 +127,7 @@ func TestHandler(t *testing.T) {
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
 				v := New(test.handlerFunc)
-				_, err := v.handler.Invoke(context.Background(), []byte("0"))
+				_, err := v.handler.Invoke(context.Background(), []byte("{}"))
 				assert.NoError(t, err)
 			})
 		}

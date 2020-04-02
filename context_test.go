@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,13 +45,14 @@ func TestTInFromContext(t *testing.T) {
 			Name string
 		}
 		called := false
-		v := New(func(ctx context.Context, u user) error {
+		handler := func(ctx context.Context, evt events.SQSEvent) error {
 			tIn, ok := TInFromContext(ctx)
 			assert.True(t, ok)
-			assert.Equal(t, reflect.TypeOf(user{}), tIn)
+			assert.Equal(t, reflect.TypeOf(events.SQSEvent{}), tIn)
 			called = true
 			return nil
-		})
+		}
+		v := New(handler)
 		_, _ = v.handler.Invoke(context.Background(), []byte("{}"))
 		assert.True(t, called)
 	})

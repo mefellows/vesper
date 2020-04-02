@@ -12,7 +12,7 @@ type LambdaFunc func(context.Context, interface{}) (interface{}, error)
 
 // Middleware is a definition of what a Middleware is,
 // take in one LambdaFunc and wrap it within another LambdaFunc
-type Middleware func(LambdaFunc) LambdaFunc
+type Middleware func(next LambdaFunc) LambdaFunc
 
 // buildChain builds the middlware chain recursively, functions are first class
 func buildChain(f LambdaFunc, m ...Middleware) LambdaFunc {
@@ -32,25 +32,41 @@ func newMiddlewareWrapper(handlerInterface interface{}, middlewareChain LambdaFu
 		return errorHandler(err)
 	}
 	takesContext := handlerTakesContext(handlerType)
-
+	var eventType reflect.Type
+	if (!takesContext && handlerType.NumIn() == 1) || handlerType.NumIn() == 2 {
+		eventType = handlerType.In(handlerType.NumIn() - 1)
+	}
+	unmarshalAWSEvt := checkAWSEventType(eventType)
 	return func(ctx context.Context, payload []byte) (interface{}, error) {
 		log.Println("[newMiddlewareWrapper] wrapped function handler")
 
 		ctx = context.WithValue(ctx, ctxKeyPayload, payload)
-		var event interface{}
-		if (!takesContext && handlerType.NumIn() == 1) || handlerType.NumIn() == 2 {
-			eventType := handlerType.In(handlerType.NumIn() - 1)
-			ctx = context.WithValue(ctx, ctxKeyTIn, eventType)
-			evt := reflect.New(eventType)
+		ctx = context.WithValue(ctx, ctxKeyTIn, eventType)
 
-			if err := json.Unmarshal(payload, evt.Interface()); err != nil {
+		var nextPayload interface{} = payload
+		if eventType != nil && unmarshalAWSEvt {
+			nextPayload, err = unmarshalEvent(eventType, payload)
+			if err != nil {
 				return nil, err
 			}
-			event = evt.Elem().Interface()
 		}
 
-		return middlewareChain(ctx, event)
+		return middlewareChain(ctx, nextPayload)
 	}
+}
+
+const awsEventsPkg = "github.com/aws/aws-lambda-go/events"
+
+func checkAWSEventType(evt reflect.Type) bool {
+	return evt != nil && evt.PkgPath() == awsEventsPkg
+}
+
+func unmarshalEvent(evtType reflect.Type, payload []byte) (interface{}, error) {
+	evt := reflect.New(evtType)
+	if err := json.Unmarshal(payload, evt.Interface()); err != nil {
+		return nil, err
+	}
+	return evt.Elem().Interface(), nil
 }
 
 // newTypedToUntypedWrapper takes a typed handler function
