@@ -8,6 +8,7 @@
     - [Usage](#usage)
     - [Logging](#logging)
   - [Middleware](#middleware)
+    - [Warmup](#warmup)
   - [What's in a name?](#whats-in-a-name)
 
 <!-- /TOC -->
@@ -43,9 +44,26 @@ func main() {
 
 ### Logging
 
-You can set your own custom logger with `WithLogger(l *log.Logger)`.
+You can set your own custom logger with `vesper.Logger(l LogPrinter)`.
 
 ## Middleware
+
+### Warmup
+
+Short circuits a request if the serverless warmup event is detected.
+
+**TIP: This middleware should be included early in the chain, before any validation or processing happens**
+
+Implements a warmup handler for https://www.npmjs.com/package/serverless-plugin-warmup
+
+Example:
+
+```go
+func main() {
+	m := vesper.New(MyHandler, vesper.WarmupMiddleware, /* any other middlewares here */)
+	m.Start()
+}
+```
 
 ## What's in a name?
 

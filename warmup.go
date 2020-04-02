@@ -1,10 +1,7 @@
-package middleware
+package vesper
 
 import (
 	"context"
-	"log"
-
-	"github.com/mefellows/vesper"
 )
 
 // WarmupEvent is the manual event
@@ -24,11 +21,11 @@ type warmupEvent struct {
 // plugin "serverless-plugin-warmup", and returns early if found
 //
 // See https://www.npmjs.com/package/serverless-plugin-warmup for more
-var WarmupMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
+func WarmupMiddleware(f LambdaFunc) LambdaFunc {
 	return func(ctx context.Context, in interface{}) (interface{}, error) {
 		log.Println("[warmupMiddleware] start")
 		var event warmupEvent
-		if err := vesper.ExtractType(ctx, &event); err == nil {
+		if err := ExtractType(ctx, &event); err == nil {
 			if event.Event.Source == "serverless-plugin-warmup" {
 				log.Println("[warmupMiddleware] warmup event detected, exiting")
 				return "warmup", nil

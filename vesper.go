@@ -4,17 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
-	"os"
 	"reflect"
 
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
+var log LogPrinter = NoOpPrinter{}
+
 // Vesper is a middleware adapter for Lambda Functions
 type Vesper struct {
 	handler lambdaHandler
-	log     *log.Logger
 }
 
 // New creates a new Vesper instance given a Handler and set of Middleware
@@ -25,7 +24,6 @@ func New(l interface{}, middlewares ...Middleware) *Vesper {
 
 	return &Vesper{
 		handler: f,
-		log:     log.New(os.Stdout, "", log.LstdFlags),
 	}
 }
 
@@ -34,9 +32,9 @@ func (v *Vesper) Start() {
 	lambda.StartHandler(v.handler)
 }
 
-// WithLogger sets the log instance to use
-func (v *Vesper) WithLogger(log *log.Logger) {
-	v.log = log
+// Logger sets the log to use
+func Logger(l LogPrinter) {
+	log = l
 }
 
 // ExtractType fetches the original invocation payload (as a []byte)

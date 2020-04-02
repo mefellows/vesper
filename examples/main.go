@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/mefellows/vesper"
-	"github.com/mefellows/vesper/middleware"
 )
 
 type User struct {
@@ -66,6 +65,6 @@ var dummyMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
 }
 
 func main() {
-	m := vesper.New(MyHandler, middleware.WarmupMiddleware, correlationIDMiddleware, dummyMiddleware, authMiddleware)
+	m := vesper.New(MyHandler, vesper.WarmupMiddleware, correlationIDMiddleware, dummyMiddleware, authMiddleware)
 	m.Start()
 }

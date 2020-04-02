@@ -3,7 +3,6 @@ package vesper
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"reflect"
 )
 
