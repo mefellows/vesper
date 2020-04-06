@@ -3,26 +3,12 @@ package vesper
 import (
 	"context"
 	"errors"
-	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
 
 	"github.com/stretchr/testify/assert"
 )
-
-func TestName(t *testing.T) {
-	type user struct {
-	}
-
-	asd := func(u user) {
-
-	}
-
-	in := reflect.TypeOf(asd).In(0)
-	fmt.Println(in.Kind() == reflect.Slice)
-}
 
 func TestHandler(t *testing.T) {
 
