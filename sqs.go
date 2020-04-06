@@ -64,7 +64,6 @@ func SQSParser(unmarshaler encoding.UnmarshalFunc) func(LambdaFunc) LambdaFunc {
 			if err != nil {
 				return nil, err
 			}
-			ctx = context.WithValue(ctx, ctxKeyEvent, evt)
 			tIns, err := unmarshalRecords(tIn, evt)
 			if err != nil {
 				return nil, err

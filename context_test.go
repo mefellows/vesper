@@ -41,9 +41,6 @@ func TestTInFromContext(t *testing.T) {
 	})
 
 	t.Run("TIn in handler signature", func(t *testing.T) {
-		type user struct {
-			Name string
-		}
 		called := false
 		handler := func(ctx context.Context, evt events.SQSEvent) error {
 			tIn, ok := TInFromContext(ctx)
