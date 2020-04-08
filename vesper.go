@@ -16,8 +16,6 @@ type Vesper struct {
 	rawHandler    interface{}
 	middlewares   []Middleware
 	autoUnmarshal bool
-
-	handler lambdaHandler
 }
 
 // New creates a new Vesper instance given a Handler and set of Middleware
@@ -28,20 +26,16 @@ func New(handler interface{}, middlewares ...Middleware) *Vesper {
 		middlewares:   middlewares,
 		autoUnmarshal: true,
 	}
-
-	v.rebuildHandlerChain()
 	return &v
 }
 
 func (v *Vesper) DisableAutoUnmarshal() *Vesper {
 	v.autoUnmarshal = false
-	v.rebuildHandlerChain()
 	return v
 }
 
 func (v *Vesper) AddMiddlewares(middlewares ...Middleware) *Vesper {
 	v.middlewares = append(v.middlewares, middlewares...)
-	v.rebuildHandlerChain()
 	return v
 }
 
@@ -49,18 +43,18 @@ func (v *Vesper) AddMiddleware(middleware Middleware) *Vesper {
 	return v.AddMiddlewares(middleware)
 }
 
-func (v *Vesper) rebuildHandlerChain() {
+func (v *Vesper) buildHandler() lambdaHandler {
 	mids := v.middlewares
 	if v.autoUnmarshal {
 		mids = append([]Middleware{JSONParserMiddleware()}, mids...)
 	}
 	m := buildChain(newTypedToUntypedWrapper(v.rawHandler), mids...)
-	v.handler = newMiddlewareWrapper(v.rawHandler, m)
+	return newMiddlewareWrapper(v.rawHandler, m)
 }
 
 // Start is a convenience function run the lambda handler
 func (v *Vesper) Start() {
-	lambda.StartHandler(v.handler)
+	lambda.StartHandler(v.buildHandler())
 }
 
 // Logger sets the log to use

@@ -23,7 +23,7 @@ func TestPayloadFromContext(t *testing.T) {
 		called = true
 		return 1, nil
 	})
-	_, _ = v.handler.Invoke(context.Background(), in)
+	_, _ = v.buildHandler().Invoke(context.Background(), in)
 	assert.True(t, called)
 }
 
@@ -36,7 +36,7 @@ func TestTInFromContext(t *testing.T) {
 			called = true
 			return nil
 		})
-		_, _ = v.handler.Invoke(context.Background(), []byte("{}"))
+		_, _ = v.buildHandler().Invoke(context.Background(), []byte("{}"))
 		assert.True(t, called)
 	})
 
@@ -50,7 +50,7 @@ func TestTInFromContext(t *testing.T) {
 			return nil
 		}
 		v := New(handler)
-		_, _ = v.handler.Invoke(context.Background(), []byte("{}"))
+		_, _ = v.buildHandler().Invoke(context.Background(), []byte("{}"))
 		assert.True(t, called)
 	})
 }

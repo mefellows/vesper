@@ -22,7 +22,7 @@ func TestSQSParser(t *testing.T) {
 		v := New(handler).
 			AddMiddleware(SQSParserMiddleware(nil)).
 			DisableAutoUnmarshal()
-		_, err := v.handler.Invoke(context.Background(), []byte("{}"))
+		_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 		assert.Error(t, err)
 	})
 
@@ -31,7 +31,7 @@ func TestSQSParser(t *testing.T) {
 		v := New(handler).
 			AddMiddleware(SQSParserMiddleware(nil)).
 			DisableAutoUnmarshal()
-		_, err := v.handler.Invoke(context.Background(), []byte("{}"))
+		_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 		assert.Error(t, err)
 	})
 
@@ -40,7 +40,7 @@ func TestSQSParser(t *testing.T) {
 		v := New(handler).
 			AddMiddleware(SQSParserMiddleware(nil)).
 			DisableAutoUnmarshal()
-		_, err := v.handler.Invoke(context.Background(), []byte("{}"))
+		_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 		assert.Error(t, err)
 	})
 
@@ -49,7 +49,7 @@ func TestSQSParser(t *testing.T) {
 		v := New(handler).
 			AddMiddleware(SQSParserMiddleware(nil)).
 			DisableAutoUnmarshal()
-		_, err := v.handler.Invoke(context.Background(), []byte("{}"))
+		_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 		assert.Error(t, err)
 	})
 
@@ -58,7 +58,7 @@ func TestSQSParser(t *testing.T) {
 		v := New(handler).
 			AddMiddleware(SQSParserMiddleware(nil)).
 			DisableAutoUnmarshal()
-		_, err := v.handler.Invoke(context.Background(), []byte("not an SQS event"))
+		_, err := v.buildHandler().Invoke(context.Background(), []byte("not an SQS event"))
 		assert.Error(t, err)
 	})
 
@@ -83,7 +83,7 @@ func TestSQSParser(t *testing.T) {
 		v := New(handler).
 			AddMiddleware(SQSParserMiddleware(encoding.JSONUnmarshal)).
 			DisableAutoUnmarshal()
-		_, err := v.handler.Invoke(context.Background(), []byte(payload))
+		_, err := v.buildHandler().Invoke(context.Background(), []byte(payload))
 		assert.NoError(t, err)
 	})
 
@@ -106,7 +106,7 @@ func TestSQSParser(t *testing.T) {
 		v := New(handler).
 			AddMiddleware(SQSParserMiddleware(encoding.JSONUnmarshal)).
 			DisableAutoUnmarshal()
-		_, err := v.handler.Invoke(context.Background(), []byte(payload))
+		_, err := v.buildHandler().Invoke(context.Background(), []byte(payload))
 		assert.Error(t, err)
 	})
 
@@ -158,7 +158,7 @@ func TestSQSParser(t *testing.T) {
 				v := New(handler).
 					AddMiddleware(SQSParserMiddleware(encoding.JSONUnmarshal)).
 					DisableAutoUnmarshal()
-				_, err := v.handler.Invoke(context.Background(), []byte(tt.payload))
+				_, err := v.buildHandler().Invoke(context.Background(), []byte(tt.payload))
 				assert.True(t, called)
 				assert.NoError(t, err)
 			})

@@ -77,7 +77,7 @@ func TestInvalidHandlerSignature(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			v := New(test.handlerFunc)
-			rsp, err := v.handler.Invoke(context.Background(), []byte("{}"))
+			rsp, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 			assert.Nil(t, rsp)
 			assert.Error(t, err)
 		})
@@ -145,7 +145,7 @@ func TestValidHandlerSignatures(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			v := New(test.handlerFunc)
-			_, err := v.handler.Invoke(context.Background(), []byte("{}"))
+			_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 			assert.NoError(t, err)
 		})
 	}
@@ -166,7 +166,7 @@ func TestAutoUnmarshal(t *testing.T) {
 		}
 		v := New(h, m1)
 		v.DisableAutoUnmarshal()
-		_, err := v.handler.Invoke(context.Background(), []byte("1"))
+		_, err := v.buildHandler().Invoke(context.Background(), []byte("1"))
 		assert.True(t, handlerCalled)
 		assert.NoError(t, err)
 	})
@@ -185,7 +185,7 @@ func TestAutoUnmarshal(t *testing.T) {
 				}
 			}
 			v := New(h, m1)
-			_, err := v.handler.Invoke(context.Background(), []byte("1"))
+			_, err := v.buildHandler().Invoke(context.Background(), []byte("1"))
 			assert.True(t, handlerCalled)
 			assert.NoError(t, err)
 		})
@@ -202,7 +202,7 @@ func TestAutoUnmarshal(t *testing.T) {
 				}
 			}
 			v := New(h, m1)
-			_, err := v.handler.Invoke(context.Background(), []byte("hello world"))
+			_, err := v.buildHandler().Invoke(context.Background(), []byte("hello world"))
 			assert.Error(t, err)
 		})
 	})
@@ -220,7 +220,7 @@ func TestAutoUnmarshal(t *testing.T) {
 			}
 			v := New(h, m1)
 			v.DisableAutoUnmarshal()
-			_, err := v.handler.Invoke(context.Background(), []byte("{}"))
+			_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 			assert.Error(t, err)
 		})
 
@@ -238,7 +238,7 @@ func TestAutoUnmarshal(t *testing.T) {
 			}
 			v := New(h, m1)
 			v.DisableAutoUnmarshal()
-			_, err := v.handler.Invoke(context.Background(), []byte("{}"))
+			_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 			assert.True(t, handlerCalled)
 			assert.NoError(t, err)
 		})
@@ -257,7 +257,7 @@ func TestAutoUnmarshal(t *testing.T) {
 			}
 			v := New(h, m1)
 			v.DisableAutoUnmarshal()
-			_, err := v.handler.Invoke(context.Background(), []byte("{}"))
+			_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 			assert.True(t, handlerCalled)
 			assert.NoError(t, err)
 		})
@@ -268,7 +268,7 @@ func TestHandler(t *testing.T) {
 
 	t.Run("no TOut should return string null in bytes", func(t *testing.T) {
 		v := New(func(context.Context, interface{}) {})
-		rsp, err := v.handler.Invoke(context.Background(), []byte("{}"))
+		rsp, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 		assert.Equal(t, []byte("null"), rsp)
 		assert.NoError(t, err)
 	})
@@ -280,7 +280,7 @@ func TestHandler(t *testing.T) {
 				called = true
 				return 1, nil
 			})
-			rsp, err := v.handler.Invoke(context.Background(), []byte("{}"))
+			rsp, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 			assert.Equal(t, []byte("1"), rsp)
 			assert.True(t, called)
 			assert.NoError(t, err)
@@ -291,7 +291,7 @@ func TestHandler(t *testing.T) {
 				called = true
 				return 1, errors.New("something happened")
 			})
-			_, err := v.handler.Invoke(context.Background(), []byte("{}"))
+			_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 			assert.True(t, called)
 			assert.Error(t, err)
 		})
@@ -311,7 +311,7 @@ func TestHandler(t *testing.T) {
 			v := New(h, newTestMiddleware("m1"))
 			v.AddMiddlewares(newTestMiddleware("m2"), newTestMiddleware("m3"))
 			v.AddMiddleware(newTestMiddleware("m4"))
-			_, err := v.handler.Invoke(context.Background(), []byte("{}"))
+			_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 			assertMiddlewareCalled(t, outerCtx, "m1", 0)
 			assertMiddlewareCalled(t, outerCtx, "m2", 1)
 			assertMiddlewareCalled(t, outerCtx, "m3", 2)
@@ -336,7 +336,7 @@ func TestHandler(t *testing.T) {
 				return 1, nil
 			}
 			v := New(h, m1, m2)
-			_, err := v.handler.Invoke(context.Background(), []byte("{}"))
+			_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
 			assert.Error(t, err)
 		})
 		t.Run("error from handler", func(t *testing.T) {
@@ -349,7 +349,7 @@ func TestHandler(t *testing.T) {
 				return 0, errors.New("something happened")
 			}
 			v := New(h, newTestMiddleware("m1"), newTestMiddleware("m2"))
-			_, err := v.handler.Invoke(outerCtx, []byte("{}"))
+			_, err := v.buildHandler().Invoke(outerCtx, []byte("{}"))
 			assertMiddlewareCalled(t, outerCtx, "m1", 0)
 			assertMiddlewareCalled(t, outerCtx, "m2", 1)
 			assert.True(t, handlerCalled)
