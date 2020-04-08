@@ -2,6 +2,7 @@ package vesper
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/mefellows/vesper/encoding"
@@ -22,7 +23,7 @@ func buildChain(f LambdaFunc, m ...Middleware) LambdaFunc {
 		return f
 	}
 	// otherwise nest the LambdaFuncs
-	return m[0](buildChain(f, m[1:cap(m)]...))
+	return m[0](buildChain(f, m[1:]...))
 }
 
 // newMiddlewareWrapper takes the middleware chain, and converts it into
@@ -33,31 +34,17 @@ func newMiddlewareWrapper(handlerInterface interface{}, middlewareChain LambdaFu
 		return errorHandler(err)
 	}
 	takesContext := handlerTakesContext(handlerType)
-	var eventType reflect.Type
+	var tIn reflect.Type
 	if (!takesContext && handlerType.NumIn() == 1) || handlerType.NumIn() == 2 {
-		eventType = handlerType.In(handlerType.NumIn() - 1)
+		tIn = handlerType.In(handlerType.NumIn() - 1)
 	}
 	return func(ctx context.Context, payload []byte) (interface{}, error) {
 		log.Println("[newMiddlewareWrapper] wrapped function handler")
 
 		ctx = context.WithValue(ctx, ctxKeyPayload, payload)
-		if eventType == nil {
-			return middlewareChain(ctx, payload)
+		if tIn != nil {
+			ctx = context.WithValue(ctx, ctxKeyTIn, tIn)
 		}
-		ctx = context.WithValue(ctx, ctxKeyTIn, eventType)
-
-		// If we try to unmarshal here and TIn is an array type, this will fail
-		// as the JSON unmarshaller will expect a '[' char and gets a '{' instead.
-		// So scenarios are:
-		// TIn = events.SQSEvent - Unmarshalling here works
-		// TIn = []interface{} - Unmarshalling here fails... what do we do :(
-		// TIn = interface{} - Unmarshalling here works
-		//
-		//evt, err := unmarshalToType(json.Unmarshal, eventType, payload)
-		//if err != nil {
-		//	return nil, err
-		//}
-
 		return middlewareChain(ctx, payload)
 	}
 }
@@ -89,6 +76,11 @@ func newTypedToUntypedWrapper(handlerInterface interface{}) LambdaFunc {
 	takesContext := handlerTakesContext(handlerType)
 	handler := reflect.ValueOf(handlerInterface)
 
+	var tIn reflect.Type
+	if (!takesContext && handlerType.NumIn() == 1) || handlerType.NumIn() == 2 {
+		tIn = handlerType.In(handlerType.NumIn() - 1)
+	}
+
 	return func(ctx context.Context, payload interface{}) (interface{}, error) {
 		log.Printf("[typedToUntypedWrapper] have payload: %+v \n", payload)
 
@@ -97,8 +89,12 @@ func newTypedToUntypedWrapper(handlerInterface interface{}) LambdaFunc {
 		if takesContext {
 			args = append(args, reflect.ValueOf(ctx))
 		}
-		if (!takesContext && handlerType.NumIn() == 1) || handlerType.NumIn() == 2 {
-			args = append(args, reflect.ValueOf(payload))
+		if tIn != nil {
+			t := reflect.TypeOf(payload)
+			if t != nil && !t.AssignableTo(tIn) {
+				return nil, fmt.Errorf("expected payload type of %s but got %s when calling the handler. parser middlewares probably need to be added", tIn.String(), t)
+			}
+			args = append(args, reflectValueOrZero(tIn, payload))
 		}
 
 		response := handler.Call(args)
@@ -117,4 +113,11 @@ func newTypedToUntypedWrapper(handlerInterface interface{}) LambdaFunc {
 
 		return val, err
 	}
+}
+
+func reflectValueOrZero(tIn reflect.Type, val interface{}) reflect.Value {
+	if val == nil {
+		return reflect.New(tIn).Elem()
+	}
+	return reflect.ValueOf(val)
 }

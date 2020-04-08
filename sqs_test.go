@@ -18,31 +18,46 @@ func TestSQSParser(t *testing.T) {
 	}
 
 	t.Run("no unmarshaler", func(t *testing.T) {
-		v := New(func(context.Context) {}, SQSParser(nil))
+		handler := func(context.Context) {}
+		v := New(handler).
+			AddMiddleware(SQSParser(nil)).
+			DisableAutoUnmarshal()
 		_, err := v.handler.Invoke(context.Background(), []byte("{}"))
 		assert.Error(t, err)
 	})
 
 	t.Run("no TIn", func(t *testing.T) {
-		v := New(func(context.Context) {}, SQSParser(encoding.JSONUnmarshal))
+		handler := func(context.Context) {}
+		v := New(handler).
+			AddMiddleware(SQSParser(nil)).
+			DisableAutoUnmarshal()
 		_, err := v.handler.Invoke(context.Background(), []byte("{}"))
 		assert.Error(t, err)
 	})
 
 	t.Run("TIn is not a slice", func(t *testing.T) {
-		v := New(func(context.Context, user) {}, SQSParser(encoding.JSONUnmarshal))
+		handler := func(context.Context, user) {}
+		v := New(handler).
+			AddMiddleware(SQSParser(nil)).
+			DisableAutoUnmarshal()
 		_, err := v.handler.Invoke(context.Background(), []byte("{}"))
 		assert.Error(t, err)
 	})
 
 	t.Run("TIn is of type events.SQSEvent", func(t *testing.T) {
-		v := New(func(context.Context, events.SQSEvent) {}, SQSParser(encoding.JSONUnmarshal))
+		handler := func(context.Context, events.SQSEvent) {}
+		v := New(handler).
+			AddMiddleware(SQSParser(nil)).
+			DisableAutoUnmarshal()
 		_, err := v.handler.Invoke(context.Background(), []byte("{}"))
 		assert.Error(t, err)
 	})
 
 	t.Run("payload cannot be unmarshalled to SQSEvent", func(t *testing.T) {
-		v := New(func(context.Context, []user) {}, SQSParser(encoding.JSONUnmarshal))
+		handler := func(context.Context, []user) {}
+		v := New(handler).
+			AddMiddleware(SQSParser(nil)).
+			DisableAutoUnmarshal()
 		_, err := v.handler.Invoke(context.Background(), []byte("not an SQS event"))
 		assert.Error(t, err)
 	})
@@ -62,9 +77,12 @@ func TestSQSParser(t *testing.T) {
   ]
 }
 `
-		v := New(func(ctx context.Context, in []interface{}) {
+		handler := func(ctx context.Context, in []interface{}) {
 			assert.Len(t, in, 2)
-		}, SQSParser(encoding.JSONUnmarshal))
+		}
+		v := New(handler).
+			AddMiddleware(SQSParser(encoding.JSONUnmarshal)).
+			DisableAutoUnmarshal()
 		_, err := v.handler.Invoke(context.Background(), []byte(payload))
 		assert.NoError(t, err)
 	})
@@ -84,7 +102,10 @@ func TestSQSParser(t *testing.T) {
   ]
 }
 `
-		v := New(func(context.Context, []user) {}, SQSParser(encoding.JSONUnmarshal))
+		handler := func(context.Context, []user) {}
+		v := New(handler).
+			AddMiddleware(SQSParser(encoding.JSONUnmarshal)).
+			DisableAutoUnmarshal()
 		_, err := v.handler.Invoke(context.Background(), []byte(payload))
 		assert.Error(t, err)
 	})
@@ -134,7 +155,9 @@ func TestSQSParser(t *testing.T) {
 					assert.Equal(t, tt.expectedTIn, users)
 					return nil, nil
 				}
-				v := New(handler, SQSParser(encoding.JSONUnmarshal))
+				v := New(handler).
+					AddMiddleware(SQSParser(encoding.JSONUnmarshal)).
+					DisableAutoUnmarshal()
 				_, err := v.handler.Invoke(context.Background(), []byte(tt.payload))
 				assert.True(t, called)
 				assert.NoError(t, err)

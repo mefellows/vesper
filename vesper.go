@@ -7,24 +7,56 @@ import (
 	"reflect"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/mefellows/vesper/encoding"
 )
 
 var log logPrinter = noOpPrinter{}
 
 // Vesper is a middleware adapter for Lambda Functions
 type Vesper struct {
+	rawHandler    interface{}
+	middlewares   []Middleware
+	autoUnmarshal bool
+
 	handler lambdaHandler
 }
 
 // New creates a new Vesper instance given a Handler and set of Middleware
 // Middlewares are evaluated in the order they are provided
-func New(l interface{}, middlewares ...Middleware) *Vesper {
-	m := buildChain(newTypedToUntypedWrapper(l), middlewares...)
-	f := newMiddlewareWrapper(l, m)
-
-	return &Vesper{
-		handler: f,
+func New(handler interface{}, middlewares ...Middleware) *Vesper {
+	v := Vesper{
+		rawHandler:    handler,
+		middlewares:   middlewares,
+		autoUnmarshal: true,
 	}
+
+	v.rebuildHandlerChain()
+	return &v
+}
+
+func (v *Vesper) DisableAutoUnmarshal() *Vesper {
+	v.autoUnmarshal = false
+	v.rebuildHandlerChain()
+	return v
+}
+
+func (v *Vesper) AddMiddlewares(middlewares ...Middleware) *Vesper {
+	v.middlewares = append(v.middlewares, middlewares...)
+	v.rebuildHandlerChain()
+	return v
+}
+
+func (v *Vesper) AddMiddleware(middleware Middleware) *Vesper {
+	return v.AddMiddlewares(middleware)
+}
+
+func (v *Vesper) rebuildHandlerChain() {
+	mids := v.middlewares
+	if v.autoUnmarshal {
+		mids = append([]Middleware{ParserMiddleware(encoding.JSONUnmarshal)}, mids...)
+	}
+	m := buildChain(newTypedToUntypedWrapper(v.rawHandler), mids...)
+	v.handler = newMiddlewareWrapper(v.rawHandler, m)
 }
 
 // Start is a convenience function run the lambda handler
