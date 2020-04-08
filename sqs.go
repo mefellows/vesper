@@ -11,14 +11,14 @@ import (
 	"github.com/mefellows/vesper/encoding"
 )
 
-func SQSParser(unmarshaler encoding.UnmarshalFunc) func(LambdaFunc) LambdaFunc {
+func SQSParserMiddleware(unmarshaler encoding.UnmarshalFunc) func(LambdaFunc) LambdaFunc {
 
 	validateTIn := func(tIn reflect.Type, ok bool) error {
 		if !ok {
 			return errors.New("no input parameter in lambda handler signature")
 		}
 		if tIn == reflect.TypeOf(events.SQSEvent{}) {
-			return errors.New("SQSParser middleware should not be used if input parameter is events.SQSEvent")
+			return errors.New("SQSParserMiddleware middleware should not be used if input parameter is events.SQSEvent")
 		}
 		if tIn.Kind() != reflect.Slice {
 			return errors.New("input parameter for SQS event must be a slice")
@@ -73,6 +73,6 @@ func SQSParser(unmarshaler encoding.UnmarshalFunc) func(LambdaFunc) LambdaFunc {
 	}
 }
 
-func JSONSQSParser() func(LambdaFunc) LambdaFunc {
-	return SQSParser(encoding.JSONUnmarshal)
+func JSONSQSParserMiddleware() func(LambdaFunc) LambdaFunc {
+	return SQSParserMiddleware(encoding.JSONUnmarshal)
 }

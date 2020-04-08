@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-
-	"github.com/mefellows/vesper/encoding"
 )
 
 // LambdaFunc is the long-form of the Lambda handler interface
@@ -45,14 +43,6 @@ func newMiddlewareWrapper(handlerInterface interface{}, middlewareChain LambdaFu
 		ctx = context.WithValue(ctx, ctxKeyTIn, tIn)
 		return middlewareChain(ctx, payload)
 	}
-}
-
-func unmarshalToType(unmarshal encoding.UnmarshalFunc, t reflect.Type, payload []byte) (interface{}, error) {
-	evt := reflect.New(t)
-	if err := unmarshal(payload, evt.Interface()); err != nil {
-		return nil, err
-	}
-	return evt.Elem().Interface(), nil
 }
 
 // newTypedToUntypedWrapper takes a typed handler function

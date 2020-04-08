@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/mefellows/vesper/encoding"
 )
@@ -26,4 +27,16 @@ func ParserMiddleware(unmarshaler encoding.UnmarshalFunc) func(LambdaFunc) Lambd
 			return next(ctx, nextIn)
 		}
 	}
+}
+
+func JSONParserMiddleware() func(LambdaFunc) LambdaFunc {
+	return ParserMiddleware(encoding.JSONUnmarshal)
+}
+
+func unmarshalToType(unmarshal encoding.UnmarshalFunc, t reflect.Type, payload []byte) (interface{}, error) {
+	evt := reflect.New(t)
+	if err := unmarshal(payload, evt.Interface()); err != nil {
+		return nil, err
+	}
+	return evt.Elem().Interface(), nil
 }
