@@ -7,7 +7,6 @@ import (
 	"reflect"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/mefellows/vesper/encoding"
 )
 
 var log logPrinter = noOpPrinter{}
@@ -53,7 +52,7 @@ func (v *Vesper) AddMiddleware(middleware Middleware) *Vesper {
 func (v *Vesper) rebuildHandlerChain() {
 	mids := v.middlewares
 	if v.autoUnmarshal {
-		mids = append([]Middleware{ParserMiddleware(encoding.JSONUnmarshal)}, mids...)
+		mids = append([]Middleware{JSONParserMiddleware()}, mids...)
 	}
 	m := buildChain(newTypedToUntypedWrapper(v.rawHandler), mids...)
 	v.handler = newMiddlewareWrapper(v.rawHandler, m)
