@@ -42,9 +42,7 @@ func newMiddlewareWrapper(handlerInterface interface{}, middlewareChain LambdaFu
 		log.Println("[newMiddlewareWrapper] wrapped function handler")
 
 		ctx = context.WithValue(ctx, ctxKeyPayload, payload)
-		if tIn != nil {
-			ctx = context.WithValue(ctx, ctxKeyTIn, tIn)
-		}
+		ctx = context.WithValue(ctx, ctxKeyTIn, tIn)
 		return middlewareChain(ctx, payload)
 	}
 }
