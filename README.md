@@ -15,9 +15,14 @@ The Golang Middleware engine for AWS Lambda.
   - [API](#api)
     - [Usage](#usage)
     - [Logging](#logging)
+  - [Auto Unmarshalling](#auto-unmarshalling)
   - [Writing your own Middleware](#writing-your-own-middleware)
   - [Available Middleware](#available-middleware)
     - [Warmup](#warmup)
+    - [Parser](#parser)
+    - [JSONParser](#jsonparser)
+    - [SQSParser](#sqsparser)
+    - [JSONSQSParser](#jsonsqsparser)
   - [How it works](#how-it-works)
     - [Execution order](#execution-order)
     - [Interrupt middleware execution early](#interrupt-middleware-execution-early)
@@ -74,6 +79,32 @@ func main() {
 
 You can set your own custom logger with `vesper.Logger(l LogPrinter)`.
 
+## Auto unmarshalling
+
+The default behavior for Vesper is to automatically JSON unmarshal the payload into the type specificed in the handler parameter. This is consistent with the behaviour of the AWS Go Lambda library. This is useful if your handler accepts an input parameter which can be directly JSON unmarshalled into the parameter type. An example of this is the event types found in `github.com/aws/aws-lambda-go/events`.
+
+This behaviour can be turned off in which case Vesper will start the middleware chain with the payload in `[]byte` form. If you are using a Parser middleware, you will likely want to turn this off to allow the parser to do the converting instead of Vesper.
+
+Here is an example of how to turn off the auto unmarshalling:
+
+```go
+// MyHandler implements the Lambda Handler interface
+func MyHandler(ctx context.Context, input []byte) error {
+  log.Println("[MyHandler]: handler invoked with payload: ", input)
+
+	return nil
+}
+
+func main() {
+  // Create a new vesper instance and disable auto unmarshalling
+  v := vesper.New(MyHandler).
+  			DisableAutoUnmarshal()
+  
+  // Replace the standard lambda.Start() with Vespers wrapper
+	v.Start()
+}
+```
+
 ## Writing your own Middleware
 
 A middleware is a function that takes a `LambdaFunc` and returns another `LambdaFunc`. A
@@ -107,36 +138,6 @@ var dummyMiddleware = func(next vesper.LambdaFunc) vesper.LambdaFunc {
 ```
 
 ## Available Middleware
-## Auto unmarshalling
-
-The default behavior for Vesper is to automatically JSON unmarshal the payload into the type specificed in the handler parameter. This is consistent with the behaviour of the AWS Go Lambda library. This is useful if your handler accepts an input parameter which can be directly JSON unmarshalled into the parameter type. An example of this is the event types found in `github.com/aws/aws-lambda-go/events`.
-
-This behaviour can be turned off in which case Vesper will start the middleware chain with the payload in `[]byte` form. If you are using a Parser middleware, you will likely want to turn this off to allow the parser to do the converting instead of Vesper.
-
-Here is an example of how to turn off the auto unmarshalling:
-
-```go
-// MyHandler implements the Lambda Handler interface
-func MyHandler(ctx context.Context, input []byte) error {
-  log.Println("[MyHandler]: handler invoked with payload: ", input)
-
-	return nil
-}
-
-func main() {
-  // Create a new vesper instance and disable auto unmarshalling
-  v := vesper.New(MyHandler).
-  			DisableAutoUnmarshal()
-  
-  // Replace the standard lambda.Start() with Vespers wrapper
-	v.Start()
-}
-```
-
-
-
-## Middleware
-
 ### Warmup
 
 Short circuits a request if the serverless warmup event is detected.
