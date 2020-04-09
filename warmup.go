@@ -23,7 +23,7 @@ type warmupEvent struct {
 // See https://www.npmjs.com/package/serverless-plugin-warmup for more
 func WarmupMiddleware(f LambdaFunc) LambdaFunc {
 	return func(ctx context.Context, in interface{}) (interface{}, error) {
-		log.Println("[warmupMiddleware] start")
+		log.Println("[warmupMiddleware] START")
 		var event warmupEvent
 		if err := ExtractType(ctx, &event); err == nil {
 			if event.Event.Source == "serverless-plugin-warmup" {

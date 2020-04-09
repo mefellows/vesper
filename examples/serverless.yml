@@ -52,8 +52,10 @@ package:
    - ./bin/**
 
 functions:
-  hello:
+  middleware:
     handler: bin/main
+  nomiddleware:
+    handler: bin/main2
 
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events

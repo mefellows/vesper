@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/mefellows/vesper"
 )
@@ -13,22 +15,48 @@ type User struct {
 	Password string
 }
 
-// MyHandler implements the Lambda Handler interface
-func MyHandler(ctx context.Context, u User) (interface{}, error) {
-	log.Printf("[actual handler]: Have User %+v\n", u)
-
-	return u.Username, nil
+type Response struct {
+	Authenticated bool `json:"authenticated"`
 }
 
-var correlationIDMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
-	return func(ctx context.Context, in interface{}) (interface{}, error) {
-		log.Println("[correlationIdMiddleware] start")
+// LoginHandler implements the Lambda Handler interface
+func LoginHandler(ctx context.Context, u User) (Response, error) {
+	log.Printf("\n\n[userHandler]: Have User %v \n\n", u)
+	var err error
 
-		res, err := f(ctx, in)
+	if u.Username == "" || u.Password == "" {
+		err = errors.New("unauthorised")
+	}
 
-		log.Println("[correlationIdMiddleware] END")
+	return Response{
+		Authenticated: true,
+	}, err
+}
 
-		return res, err
+// LoginHandler implements the Lambda Handler interface
+func LoginHandler2(ctx context.Context, u User) (interface{}, error) {
+	log.Println("[userHandler] checking request type for warmup event or API call")
+	log.Println("[userHandler] Validating API request")
+	log.Println("[userHandler] Extracting correlation ID for event")
+	log.Println("[userHandler] Authenticating request")
+	log.Println("[userHandler] Executing User API Call")
+	log.Println("[userHandler] validating output response body")
+	log.Println("[userHandler] setting correlation ID property")
+
+	return nil, nil
+}
+
+var namedMiddleware = func(name string) vesper.Middleware {
+	return func(f vesper.LambdaFunc) vesper.LambdaFunc {
+		return func(ctx context.Context, in interface{}) (interface{}, error) {
+			log.Printf("[%s] START: %+v", name, in)
+
+			res, err := f(ctx, in)
+
+			log.Printf("[%s] END %+v", name, in)
+
+			return res, err
+		}
 	}
 }
 
@@ -36,35 +64,26 @@ var authMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
 	// one time scope setup area for middleware
 
 	return func(ctx context.Context, in interface{}) (interface{}, error) {
-		log.Println("[authMiddleware] start: ", in)
+		log.Println("[authMiddleware] START: ", in)
 		user := in.(User)
-		if user.Username == "fail" {
+		if user.Username == "" || user.Password == "" {
 			error := map[string]string{
 				"error": "unauthorised",
 			}
-			return error, fmt.Errorf("user %v is unauthorised", in)
+			log.Println("[authMiddleware] user is unauthorised, short circuiting request: ", in)
+			return error, fmt.Errorf("user %v is unauthorised", user.Username)
 		}
 
 		res, err := f(ctx, in)
-		log.Println("[authMiddleware] END: ", res)
-
-		return res, err
-	}
-}
-
-var dummyMiddleware = func(f vesper.LambdaFunc) vesper.LambdaFunc {
-	// one time scope setup area for middleware
-
-	return func(ctx context.Context, in interface{}) (interface{}, error) {
-		log.Println("[dummyMiddleware] start: ", in)
-		res, err := f(ctx, in)
-		log.Println("[dummyMiddleware] END: ", res)
+		log.Printf("[authMiddleware] END: %+v \n", in)
 
 		return res, err
 	}
 }
 
 func main() {
-	m := vesper.New(MyHandler, vesper.WarmupMiddleware, correlationIDMiddleware, dummyMiddleware, authMiddleware)
+	vesper.Logger(log.New(os.Stdout, "", log.LstdFlags))
+	// m := vesper.New(LoginHandler2)
+	m := vesper.New(LoginHandler, namedMiddleware("requestValidationMiddleware"), namedMiddleware("correlationIdMiddleware"), authMiddleware)
 	m.Start()
 }
