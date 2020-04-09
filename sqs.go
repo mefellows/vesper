@@ -11,12 +11,10 @@ import (
 	"github.com/mefellows/vesper/encoding"
 )
 
+// SQSParserMiddleware transforms SQS event records into the handler input parameter type using the given unmarshaler.
+// The handler input parameter must be a slice.
 func SQSParserMiddleware(unmarshaler encoding.UnmarshalFunc) func(LambdaFunc) LambdaFunc {
-
-	validateTIn := func(tIn reflect.Type, ok bool) error {
-		if !ok {
-			return errors.New("no input parameter in lambda handler signature")
-		}
+	validateTIn := func(tIn reflect.Type) error {
 		if tIn == reflect.TypeOf(events.SQSEvent{}) {
 			return errors.New("SQSParserMiddleware middleware should not be used if input parameter is events.SQSEvent")
 		}
@@ -26,13 +24,13 @@ func SQSParserMiddleware(unmarshaler encoding.UnmarshalFunc) func(LambdaFunc) La
 		return nil
 	}
 
-	unmarshalSQSEventFromContext := func(ctx context.Context) (events.SQSEvent, error) {
-		bs, ok := PayloadFromContext(ctx)
+	unmarshalSQSEvent := func(in interface{}) (events.SQSEvent, error) {
+		b, ok := in.([]byte)
 		if !ok {
-			return events.SQSEvent{}, errors.New("payload not available in context. this is likely a bug with the framework")
+			return events.SQSEvent{}, fmt.Errorf("expected []byte input but got %T", in)
 		}
 		evt := events.SQSEvent{}
-		if err := json.Unmarshal(bs, &evt); err != nil {
+		if err := json.Unmarshal(b, &evt); err != nil {
 			return events.SQSEvent{}, fmt.Errorf("could not unmarshal SQS event: %w", err)
 		}
 		return evt, nil
@@ -56,11 +54,13 @@ func SQSParserMiddleware(unmarshaler encoding.UnmarshalFunc) func(LambdaFunc) La
 				return nil, errors.New("no unmarshaler was provided")
 			}
 			tIn, ok := TInFromContext(ctx)
-			if err := validateTIn(tIn, ok); err != nil {
+			if !ok {
+				return next(ctx, in) // continue as there is no TIn to parse anyway.
+			}
+			if err := validateTIn(tIn); err != nil {
 				return nil, err
 			}
-			evt := events.SQSEvent{}
-			evt, err := unmarshalSQSEventFromContext(ctx)
+			evt, err := unmarshalSQSEvent(in)
 			if err != nil {
 				return nil, err
 			}
@@ -73,6 +73,8 @@ func SQSParserMiddleware(unmarshaler encoding.UnmarshalFunc) func(LambdaFunc) La
 	}
 }
 
+// JSONSQSParserMiddleware transforms SQS event records into the handler input parameter type using a JSON unmarshaler.
+// The handler input parameter must be a slice.
 func JSONSQSParserMiddleware() func(LambdaFunc) LambdaFunc {
-	return SQSParserMiddleware(encoding.JSONUnmarshal)
+	return SQSParserMiddleware(json.Unmarshal)
 }

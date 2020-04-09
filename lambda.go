@@ -37,10 +37,10 @@ func validateHandlerFunc(handlerInterface interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err := validateArguments(handlerType); err != nil {
+	if err = validateArguments(handlerType); err != nil {
 		return err
 	}
-	if err := validateReturns(handlerType); err != nil {
+	if err = validateReturns(handlerType); err != nil {
 		return err
 	}
 	return nil

@@ -2,12 +2,11 @@ package vesper
 
 import (
 	"context"
+	"encoding/json"
+	"reflect"
 	"testing"
 
-	"github.com/mefellows/vesper/encoding"
-
 	"github.com/aws/aws-lambda-go/events"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,52 +17,74 @@ func TestSQSParser(t *testing.T) {
 	}
 
 	t.Run("no unmarshaler", func(t *testing.T) {
-		handler := func(context.Context) {}
-		v := New(handler).
-			AddMiddleware(SQSParserMiddleware(nil)).
-			DisableAutoUnmarshal()
-		_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
+		nextFunc := func(ctx context.Context, in interface{}) (interface{}, error) {
+			t.Errorf("unexpected call to next func")
+			return nil, nil
+		}
+		middleware := SQSParserMiddleware(nil)(nextFunc)
+		_, err := middleware(context.Background(), []byte("{}"))
 		assert.Error(t, err)
 	})
 
 	t.Run("no TIn", func(t *testing.T) {
-		handler := func(context.Context) {}
-		v := New(handler).
-			AddMiddleware(SQSParserMiddleware(nil)).
-			DisableAutoUnmarshal()
-		_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
-		assert.Error(t, err)
+		called := false
+		nextFunc := func(ctx context.Context, in interface{}) (interface{}, error) {
+			called = true
+			return nil, nil
+		}
+		middleware := SQSParserMiddleware(json.Unmarshal)(nextFunc)
+		payload := []byte("{}")
+		ctx := context.Background()
+		ctx = context.WithValue(ctx, ctxKeyPayload, payload)
+		_, err := middleware(ctx, payload)
+		assert.NoError(t, err)
+		assert.True(t, called)
 	})
 
 	t.Run("TIn is not a slice", func(t *testing.T) {
-		handler := func(context.Context, user) {}
-		v := New(handler).
-			AddMiddleware(SQSParserMiddleware(nil)).
-			DisableAutoUnmarshal()
-		_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
+		nextFunc := func(ctx context.Context, in interface{}) (interface{}, error) {
+			t.Errorf("unexpected call to next func")
+			return nil, nil
+		}
+		middleware := SQSParserMiddleware(json.Unmarshal)(nextFunc)
+		payload := []byte("{}")
+		ctx := context.Background()
+		ctx = context.WithValue(ctx, ctxKeyTIn, reflect.TypeOf(user{}))
+		ctx = context.WithValue(ctx, ctxKeyPayload, payload)
+		_, err := middleware(ctx, payload)
 		assert.Error(t, err)
 	})
 
 	t.Run("TIn is of type events.SQSEvent", func(t *testing.T) {
-		handler := func(context.Context, events.SQSEvent) {}
-		v := New(handler).
-			AddMiddleware(SQSParserMiddleware(nil)).
-			DisableAutoUnmarshal()
-		_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
+		nextFunc := func(ctx context.Context, in interface{}) (interface{}, error) {
+			t.Errorf("unexpected call to next func")
+			return nil, nil
+		}
+		middleware := SQSParserMiddleware(json.Unmarshal)(nextFunc)
+		payload := []byte("{}")
+		ctx := context.Background()
+		ctx = context.WithValue(ctx, ctxKeyTIn, reflect.TypeOf(events.SQSEvent{}))
+		ctx = context.WithValue(ctx, ctxKeyPayload, payload)
+		_, err := middleware(ctx, payload)
 		assert.Error(t, err)
 	})
 
 	t.Run("payload cannot be unmarshalled to SQSEvent", func(t *testing.T) {
-		handler := func(context.Context, []user) {}
-		v := New(handler).
-			AddMiddleware(SQSParserMiddleware(nil)).
-			DisableAutoUnmarshal()
-		_, err := v.buildHandler().Invoke(context.Background(), []byte("not an SQS event"))
+		nextFunc := func(ctx context.Context, in interface{}) (interface{}, error) {
+			t.Errorf("unexpected call to next func")
+			return nil, nil
+		}
+		middleware := SQSParserMiddleware(json.Unmarshal)(nextFunc)
+		payload := []byte("not an SQS event")
+		ctx := context.Background()
+		ctx = context.WithValue(ctx, ctxKeyTIn, reflect.TypeOf([]user{}))
+		ctx = context.WithValue(ctx, ctxKeyPayload, payload)
+		_, err := middleware(ctx, payload)
 		assert.Error(t, err)
 	})
 
 	t.Run("TIn is a slice of interface types", func(t *testing.T) {
-		payload := `
+		request := `
 {
   "Records": [
     {
@@ -77,18 +98,22 @@ func TestSQSParser(t *testing.T) {
   ]
 }
 `
-		handler := func(ctx context.Context, in []interface{}) {
+		nextFunc := func(ctx context.Context, in interface{}) (interface{}, error) {
+			assert.IsType(t, []user{}, in)
 			assert.Len(t, in, 2)
+			return nil, nil
 		}
-		v := New(handler).
-			AddMiddleware(SQSParserMiddleware(encoding.JSONUnmarshal)).
-			DisableAutoUnmarshal()
-		_, err := v.buildHandler().Invoke(context.Background(), []byte(payload))
+		middleware := SQSParserMiddleware(json.Unmarshal)(nextFunc)
+		payload := []byte(request)
+		ctx := context.Background()
+		ctx = context.WithValue(ctx, ctxKeyTIn, reflect.TypeOf([]user{}))
+		ctx = context.WithValue(ctx, ctxKeyPayload, payload)
+		_, err := middleware(ctx, payload)
 		assert.NoError(t, err)
 	})
 
 	t.Run("payload cannot be unmarshalled to SQSEvent", func(t *testing.T) {
-		payload := `
+		request := `
 {
   "Records": [
     {
@@ -102,11 +127,16 @@ func TestSQSParser(t *testing.T) {
   ]
 }
 `
-		handler := func(context.Context, []user) {}
-		v := New(handler).
-			AddMiddleware(SQSParserMiddleware(encoding.JSONUnmarshal)).
-			DisableAutoUnmarshal()
-		_, err := v.buildHandler().Invoke(context.Background(), []byte(payload))
+		nextFunc := func(ctx context.Context, in interface{}) (interface{}, error) {
+			t.Errorf("unexpected call to next func")
+			return nil, nil
+		}
+		middleware := SQSParserMiddleware(json.Unmarshal)(nextFunc)
+		payload := []byte(request)
+		ctx := context.Background()
+		ctx = context.WithValue(ctx, ctxKeyTIn, reflect.TypeOf([]user{}))
+		ctx = context.WithValue(ctx, ctxKeyPayload, payload)
+		_, err := middleware(ctx, payload)
 		assert.Error(t, err)
 	})
 
@@ -149,17 +179,19 @@ func TestSQSParser(t *testing.T) {
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				called := false
-				handler := func(ctx context.Context, users []user) (interface{}, error) {
-					called = true
-					assert.Equal(t, tt.expectedTIn, users)
+				nextFuncCalled := false
+				nextFunc := func(ctx context.Context, in interface{}) (interface{}, error) {
+					nextFuncCalled = true
+					assert.Equal(t, tt.expectedTIn, in)
 					return nil, nil
 				}
-				v := New(handler).
-					AddMiddleware(SQSParserMiddleware(encoding.JSONUnmarshal)).
-					DisableAutoUnmarshal()
-				_, err := v.buildHandler().Invoke(context.Background(), []byte(tt.payload))
-				assert.True(t, called)
+				middleware := SQSParserMiddleware(json.Unmarshal)(nextFunc)
+				payload := []byte(tt.payload)
+				ctx := context.Background()
+				ctx = context.WithValue(ctx, ctxKeyTIn, reflect.TypeOf([]user{}))
+				ctx = context.WithValue(ctx, ctxKeyPayload, payload)
+				_, err := middleware(ctx, payload)
+				assert.True(t, nextFuncCalled)
 				assert.NoError(t, err)
 			})
 		}

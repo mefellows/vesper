@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +21,7 @@ func newTestMiddleware(name string) func(LambdaFunc) LambdaFunc {
 	}
 }
 
-func assertMiddlewareCalled(t *testing.T, ctx context.Context, name string, expectedIndex int) {
+func assertMiddlewareCalled(ctx context.Context, t *testing.T, name string, expectedIndex int) {
 	chainIndex, ok := ctx.Value(name).(int)
 	if !ok {
 		t.Errorf("could not find chain index")
@@ -151,60 +150,32 @@ func TestValidHandlerSignatures(t *testing.T) {
 	}
 }
 
-func TestAutoUnmarshal(t *testing.T) {
-	t.Run("disabled auto unmarshal", func(t *testing.T) {
-		handlerCalled := false
-		h := func(ctx context.Context, in int) (int, error) {
-			handlerCalled = true
-			return 1, nil
+func TestDisableAutoUnmarshal(t *testing.T) {
+	handlerCalled := false
+	h := func(ctx context.Context, in int) (int, error) {
+		handlerCalled = true
+		return 1, nil
+	}
+	m1 := func(next LambdaFunc) LambdaFunc {
+		return func(ctx context.Context, in interface{}) (interface{}, error) {
+			assert.Equal(t, []byte("1"), in, "expected input not to be unmarshaled into TIn type of int")
+			return next(ctx, 1)
 		}
-		m1 := func(next LambdaFunc) LambdaFunc {
-			return func(ctx context.Context, in interface{}) (interface{}, error) {
-				assert.Equal(t, []byte("1"), in, "expected input not to be unmarshaled into TIn type of int")
-				return next(ctx, 1)
-			}
-		}
-		v := New(h, m1)
-		v.DisableAutoUnmarshal()
-		_, err := v.buildHandler().Invoke(context.Background(), []byte("1"))
-		assert.True(t, handlerCalled)
+	}
+	v := New(h, m1)
+	v.DisableAutoUnmarshal()
+	_, err := v.buildHandler().Invoke(context.Background(), []byte("1"))
+	assert.True(t, handlerCalled)
+	assert.NoError(t, err)
+}
+
+func TestHandler(t *testing.T) {
+
+	t.Run("no TOut should return string null in bytes", func(t *testing.T) {
+		v := New(func(context.Context, interface{}) {})
+		rsp, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
+		assert.Equal(t, []byte("null"), rsp)
 		assert.NoError(t, err)
-	})
-
-	t.Run("enabled auto unmarshal", func(t *testing.T) {
-		t.Run("TIn and payload is compatible", func(t *testing.T) {
-			handlerCalled := false
-			h := func(ctx context.Context, in int) (int, error) {
-				handlerCalled = true
-				return in, nil
-			}
-			m1 := func(next LambdaFunc) LambdaFunc {
-				return func(ctx context.Context, in interface{}) (interface{}, error) {
-					assert.Equal(t, 1, in, "expected input to be unmarshaled into TIn type of int")
-					return next(ctx, 0)
-				}
-			}
-			v := New(h, m1)
-			_, err := v.buildHandler().Invoke(context.Background(), []byte("1"))
-			assert.True(t, handlerCalled)
-			assert.NoError(t, err)
-		})
-
-		t.Run("TIn and payload is not compatible", func(t *testing.T) {
-			h := func(ctx context.Context, in int) (int, error) {
-				t.Errorf("unexpected call to handler")
-				return in, nil
-			}
-			m1 := func(next LambdaFunc) LambdaFunc {
-				return func(ctx context.Context, in interface{}) (interface{}, error) {
-					t.Errorf("unexpected call to middleware")
-					return next(ctx, 0)
-				}
-			}
-			v := New(h, m1)
-			_, err := v.buildHandler().Invoke(context.Background(), []byte("hello world"))
-			assert.Error(t, err)
-		})
 	})
 
 	t.Run("input to lambda handler from middlewares", func(t *testing.T) {
@@ -262,16 +233,6 @@ func TestAutoUnmarshal(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	})
-}
-
-func TestHandler(t *testing.T) {
-
-	t.Run("no TOut should return string null in bytes", func(t *testing.T) {
-		v := New(func(context.Context, interface{}) {})
-		rsp, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
-		assert.Equal(t, []byte("null"), rsp)
-		assert.NoError(t, err)
-	})
 
 	t.Run("no middlewares", func(t *testing.T) {
 		t.Run("no error from handler", func(t *testing.T) {
@@ -298,7 +259,6 @@ func TestHandler(t *testing.T) {
 	})
 
 	t.Run("middlewares provided", func(t *testing.T) {
-
 		t.Run("no error", func(t *testing.T) {
 			outerCtx := context.Background()
 			handlerCalled := false
@@ -309,13 +269,13 @@ func TestHandler(t *testing.T) {
 				return 1, nil
 			}
 			v := New(h, newTestMiddleware("m1"))
-			v.AddMiddlewares(newTestMiddleware("m2"), newTestMiddleware("m3"))
-			v.AddMiddleware(newTestMiddleware("m4"))
+			v.Use(newTestMiddleware("m2"), newTestMiddleware("m3"))
+			v.Use(newTestMiddleware("m4"))
 			_, err := v.buildHandler().Invoke(context.Background(), []byte("{}"))
-			assertMiddlewareCalled(t, outerCtx, "m1", 0)
-			assertMiddlewareCalled(t, outerCtx, "m2", 1)
-			assertMiddlewareCalled(t, outerCtx, "m3", 2)
-			assertMiddlewareCalled(t, outerCtx, "m4", 3)
+			assertMiddlewareCalled(outerCtx, t, "m1", 0)
+			assertMiddlewareCalled(outerCtx, t, "m2", 1)
+			assertMiddlewareCalled(outerCtx, t, "m3", 2)
+			assertMiddlewareCalled(outerCtx, t, "m4", 3)
 			assert.True(t, handlerCalled)
 			assert.NoError(t, err)
 		})
@@ -350,8 +310,8 @@ func TestHandler(t *testing.T) {
 			}
 			v := New(h, newTestMiddleware("m1"), newTestMiddleware("m2"))
 			_, err := v.buildHandler().Invoke(outerCtx, []byte("{}"))
-			assertMiddlewareCalled(t, outerCtx, "m1", 0)
-			assertMiddlewareCalled(t, outerCtx, "m2", 1)
+			assertMiddlewareCalled(outerCtx, t, "m1", 0)
+			assertMiddlewareCalled(outerCtx, t, "m2", 1)
 			assert.True(t, handlerCalled)
 			assert.Error(t, err)
 		})
