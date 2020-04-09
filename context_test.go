@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +23,7 @@ func TestPayloadFromContext(t *testing.T) {
 		called = true
 		return 1, nil
 	})
-	_, _ = v.handler.Invoke(context.Background(), in)
+	_, _ = v.buildHandler().Invoke(context.Background(), in)
 	assert.True(t, called)
 }
 
@@ -35,23 +36,21 @@ func TestTInFromContext(t *testing.T) {
 			called = true
 			return nil
 		})
-		_, _ = v.handler.Invoke(context.Background(), []byte("{}"))
+		_, _ = v.buildHandler().Invoke(context.Background(), []byte("{}"))
 		assert.True(t, called)
 	})
 
 	t.Run("TIn in handler signature", func(t *testing.T) {
-		type user struct {
-			Name string
-		}
 		called := false
-		v := New(func(ctx context.Context, u user) error {
+		handler := func(ctx context.Context, evt events.SQSEvent) error {
 			tIn, ok := TInFromContext(ctx)
 			assert.True(t, ok)
-			assert.Equal(t, reflect.TypeOf(user{}), tIn)
+			assert.Equal(t, reflect.TypeOf(events.SQSEvent{}), tIn)
 			called = true
 			return nil
-		})
-		_, _ = v.handler.Invoke(context.Background(), []byte("{}"))
+		}
+		v := New(handler)
+		_, _ = v.buildHandler().Invoke(context.Background(), []byte("{}"))
 		assert.True(t, called)
 	})
 }

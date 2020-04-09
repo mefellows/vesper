@@ -13,23 +13,56 @@ var log logPrinter = noOpPrinter{}
 
 // Vesper is a middleware adapter for Lambda Functions
 type Vesper struct {
-	handler lambdaHandler
+	rawHandler    interface{}
+	middlewares   []Middleware
+	autoUnmarshal bool
 }
 
 // New creates a new Vesper instance given a Handler and set of Middleware
 // Middlewares are evaluated in the order they are provided
-func New(l interface{}, middlewares ...Middleware) *Vesper {
-	m := buildChain(newTypedToUntypedWrapper(l), middlewares...)
-	f := newMiddlewareWrapper(l, m)
-
-	return &Vesper{
-		handler: f,
+func New(handler interface{}, middlewares ...Middleware) *Vesper {
+	v := Vesper{
+		rawHandler:    handler,
+		middlewares:   middlewares,
+		autoUnmarshal: true,
 	}
+	return &v
+}
+
+// DisableAutoUnmarshal disables the default behaviour of JSON unmarshaling the payload into the handler input parameter type.
+// This flag should be set if your handler accepts an input parameter other than context.Context but is not directly JSON unmarshalable from the payload.
+//
+// An example of this is if your Lambda is triggered by Kinesis events and the handler signature is func(ctx, []MyCustomObject){}.
+// In this case, your Lambda would need to loop through all the records in the event, Base64 decode the body
+// and then unmarshal the body into the type of MyCustomObject.
+//
+// Situations where you want the default behaviour:
+// - If your handler doesn't accept an input parameter other than context.Context.
+// - If your handler accepts an input parameter other than context.Context that is compatible with an AWS event payload (see github.com/aws/aws-lambda-go/events).
+// - If your Lambda is invoked directly with a JSON payload and your handler accepts an input parameter other than context.Context which is compatible with the payload.
+func (v *Vesper) DisableAutoUnmarshal() *Vesper {
+	v.autoUnmarshal = false
+	return v
+}
+
+// Use adds middlewares onto the middleware chain
+func (v *Vesper) Use(middlewares ...Middleware) *Vesper {
+	v.middlewares = append(v.middlewares, middlewares...)
+	return v
+}
+
+func (v *Vesper) buildHandler() lambdaHandler {
+	mids := v.middlewares
+	if v.autoUnmarshal {
+		mids = append([]Middleware{JSONParserMiddleware()}, mids...)
+	}
+	m := buildChain(newTypedToUntypedWrapper(v.rawHandler), mids...)
+	return newMiddlewareWrapper(v.rawHandler, m)
 }
 
 // Start is a convenience function run the lambda handler
 func (v *Vesper) Start() {
-	lambda.StartHandler(v.handler)
+	lambda.StartHandler(v.buildHandler())
 }
 
 // Logger sets the log to use
