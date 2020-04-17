@@ -3,7 +3,7 @@
 The Golang Middleware engine for AWS Lambda.
 
 [![Build Status](https://travis-ci.org/mefellows/vesper.svg?branch=master)](https://travis-ci.org/mefellows/vesper)
-[![Coverage Status](https://coveralls.io/repos/github/mefellows/vesper/badge.svg?branch=HEAD)](https://coveralls.io/github/mefellows/vesper?branch=HEAD)
+[![Coverage Status](https://coveralls.io/repos/github/mefellows/vesper/badge.svg?branch=master)](https://coveralls.io/github/mefellows/vesper?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mefellows/vesper)](https://goreportcard.com/report/github.com/mefellows/vesper)
 [![GoDoc](https://godoc.org/github.com/mefellows/vesper?status.svg)](https://godoc.org/github.com/mefellows/vesper)
 
