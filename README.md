@@ -15,7 +15,7 @@ The Golang Middleware engine for AWS Lambda.
   - [API](#api)
     - [Usage](#usage)
     - [Logging](#logging)
-  - [Auto Unmarshalling](#auto-unmarshalling)
+  - [Auto unmarshalling](#auto-unmarshalling)
   - [Writing your own Middleware](#writing-your-own-middleware)
   - [Available Middleware](#available-middleware)
     - [Warmup](#warmup)
@@ -99,7 +99,7 @@ func main() {
   // Create a new vesper instance and disable auto unmarshalling
   v := vesper.New(MyHandler).
   			DisableAutoUnmarshal()
-  
+
   // Replace the standard lambda.Start() with Vespers wrapper
 	v.Start()
 }
@@ -172,8 +172,8 @@ import (
 
 func main() {
 	m := vesper.New(MyHandler).
-				DisableAutoUnmarshal().
-  			Use(vesper.ParserMiddleware(json.Unmarshal))
+		DisableAutoUnmarshal().
+		Use(vesper.ParserMiddleware(json.Unmarshal))
 	m.Start()
 }
 ```
@@ -189,8 +189,8 @@ import "github.com/mefellows/vesper"
 
 func main() {
 	m := vesper.New(MyHandler).
-				DisableAutoUnmarshal().
-  			Use(vesper.JSONParserMiddleware())
+		DisableAutoUnmarshal().
+		Use(vesper.JSONParserMiddleware())
 	m.Start()
 }
 ```
@@ -218,8 +218,8 @@ func MyHandler(ctx context.Context, users []users) error {
 
 func main() {
 	m := vesper.New(MyHandler).
-				DisableAutoUnmarshal().
-  			Use(vesper.SQSParserMiddleware(json.Unmarshal))
+		DisableAutoUnmarshal().
+		Use(vesper.SQSParserMiddleware(json.Unmarshal))
 	m.Start()
 }
 ```
