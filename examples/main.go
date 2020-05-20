@@ -49,11 +49,11 @@ func LoginHandler2(ctx context.Context, u User) (interface{}, error) {
 var namedMiddleware = func(name string) vesper.Middleware {
 	return func(f vesper.LambdaFunc) vesper.LambdaFunc {
 		return func(ctx context.Context, in interface{}) (interface{}, error) {
-			log.Printf("[%s] START: %+v", name, in)
+			log.Printf("[%s] START: %+v", name)
 
 			res, err := f(ctx, in)
 
-			log.Printf("[%s] END %+v", name, in)
+			log.Printf("[%s] END %+v", name)
 
 			return res, err
 		}

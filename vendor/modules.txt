@@ -7,6 +7,8 @@ github.com/aws/aws-lambda-go/lambda/messages
 github.com/aws/aws-lambda-go/lambdacontext
 # github.com/axw/gocov v1.0.0
 ## explicit
+# github.com/cpuguy83/go-md2man/v2 v2.0.0
+## explicit
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
@@ -18,11 +20,20 @@ github.com/davecgh/go-spew/spew
 ## explicit
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
+# github.com/qri-io/jsonpointer v0.1.0
+github.com/qri-io/jsonpointer
+# github.com/qri-io/jsonschema v0.1.1
+## explicit
+github.com/qri-io/jsonschema
 # github.com/stretchr/testify v1.5.1
 ## explicit
 github.com/stretchr/testify/assert
+# github.com/urfave/cli/v2 v2.2.0
+## explicit
+# github.com/xeipuuv/gojsonschema v1.2.0
+## explicit
 # golang.org/x/tools v0.0.0-20200401192744-099440627f01
 ## explicit
-# gopkg.in/yaml.v2 v2.2.8
+# gopkg.in/yaml.v2 v2.3.0
 ## explicit
 gopkg.in/yaml.v2
