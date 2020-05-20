@@ -63,8 +63,9 @@ var validationMiddleware = func(next vesper.LambdaFunc) vesper.LambdaFunc {
 		logger.Println("START validationMiddleware")
 		evt := in.(events.APIGatewayProxyRequest)
 
-		validateBody := func(in interface{}) error {
-			var schemaData = []byte(`{
+		if evt.HTTPMethod != "GET" {
+			validateBody := func(in interface{}) error {
+				var schemaData = []byte(`{
 				"title": "Person",
 				"type": "object",
 				"properties": {
@@ -73,36 +74,31 @@ var validationMiddleware = func(next vesper.LambdaFunc) vesper.LambdaFunc {
 						},
 						"lastName": {
 								"type": "string"
-						},
-						"age": {
-								"description": "Age in years",
-								"type": "integer",
-								"minimum": 0
-						},
-						"friends": {
-							"type" : "array",
-							"items" : { "title" : "REFERENCE", "$ref" : "#" }
 						}
 				},
 				"required": ["firstName", "lastName"]
 			}`)
 
-			rs := &jsonschema.RootSchema{}
-			if err := json.Unmarshal(schemaData, rs); err != nil {
-				return err
+				rs := &jsonschema.RootSchema{}
+				if err := json.Unmarshal(schemaData, rs); err != nil {
+					return err
+				}
+
+				if errors, _ := rs.ValidateBytes([]byte(evt.Body)); len(errors) > 0 {
+					return fmt.Errorf("Unable to validate payload: %+v", errors)
+				}
+
+				return nil
 			}
 
-			if errors, _ := rs.ValidateBytes([]byte(evt.Body)); len(errors) > 0 {
-				return fmt.Errorf("Unable to validate payload: %+v", errors)
+			err := validateBody(in)
+
+			if err != nil {
+				return events.APIGatewayProxyResponse{
+					Body:       fmt.Sprintf("Invalid request: %+v", err),
+					StatusCode: 400,
+				}, nil
 			}
-
-			return nil
-		}
-
-		err := validateBody(in)
-
-		if err != nil {
-			return nil, err
 		}
 
 		res, err := next(ctx, in)
