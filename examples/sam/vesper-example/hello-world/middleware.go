@@ -10,7 +10,7 @@ import (
 	"github.com/qri-io/jsonschema"
 )
 
-var fakeMiddleware = func(name string) vesper.Middleware {
+func fakeMiddleware(name string) vesper.Middleware {
 	return func(next vesper.LambdaFunc) vesper.LambdaFunc {
 		return func(ctx context.Context, in interface{}) (interface{}, error) {
 			logger.Println(fmt.Sprintf("START %s", name))
@@ -24,7 +24,7 @@ var fakeMiddleware = func(name string) vesper.Middleware {
 	}
 }
 
-var correlationIdMiddleware = func(next vesper.LambdaFunc) vesper.LambdaFunc {
+func correlationIDMiddleware(next vesper.LambdaFunc) vesper.LambdaFunc {
 	return func(ctx context.Context, in interface{}) (interface{}, error) {
 		logger.Println("START correlationIdMiddleware")
 
@@ -58,40 +58,48 @@ var correlationIdMiddleware = func(next vesper.LambdaFunc) vesper.LambdaFunc {
 	}
 }
 
-var validationMiddleware = func(next vesper.LambdaFunc) vesper.LambdaFunc {
+func validateBody(body string) error {
+	var schemaData = []byte(`{
+	"title": "Person",
+	"type": "object",
+	"properties": {
+			"firstName": {
+					"type": "string"
+			},
+			"lastName": {
+					"type": "string"
+			}
+	},
+	"required": ["firstName", "lastName"]
+}`)
+
+	rs := &jsonschema.RootSchema{}
+	if err := json.Unmarshal(schemaData, rs); err != nil {
+		return err
+	}
+
+	if errors, _ := rs.ValidateBytes([]byte(body)); len(errors) > 0 {
+		return fmt.Errorf("Unable to validate payload: %+v", errors)
+	}
+
+	return nil
+}
+
+func validationMiddleware(next vesper.LambdaFunc) vesper.LambdaFunc {
 	return func(ctx context.Context, in interface{}) (interface{}, error) {
 		logger.Println("START validationMiddleware")
-		evt := in.(events.APIGatewayProxyRequest)
+
+		evt, ok := in.(events.APIGatewayProxyRequest)
+
+		if !ok {
+			return events.APIGatewayProxyResponse{
+				Body:       "Unable to validate payload: request is not an API Gateway Request",
+				StatusCode: 400,
+			}, nil
+		}
 
 		if evt.HTTPMethod != "GET" {
-			validateBody := func(in interface{}) error {
-				var schemaData = []byte(`{
-				"title": "Person",
-				"type": "object",
-				"properties": {
-						"firstName": {
-								"type": "string"
-						},
-						"lastName": {
-								"type": "string"
-						}
-				},
-				"required": ["firstName", "lastName"]
-			}`)
-
-				rs := &jsonschema.RootSchema{}
-				if err := json.Unmarshal(schemaData, rs); err != nil {
-					return err
-				}
-
-				if errors, _ := rs.ValidateBytes([]byte(evt.Body)); len(errors) > 0 {
-					return fmt.Errorf("Unable to validate payload: %+v", errors)
-				}
-
-				return nil
-			}
-
-			err := validateBody(in)
+			err := validateBody(evt.Body)
 
 			if err != nil {
 				return events.APIGatewayProxyResponse{
