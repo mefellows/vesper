@@ -10,12 +10,12 @@ import (
 	"github.com/qri-io/jsonschema"
 )
 
-var namedMiddleware = func(name string) vesper.Middleware {
-	return func(f vesper.LambdaFunc) vesper.LambdaFunc {
+var fakeMiddleware = func(name string) vesper.Middleware {
+	return func(next vesper.LambdaFunc) vesper.LambdaFunc {
 		return func(ctx context.Context, in interface{}) (interface{}, error) {
 			logger.Println(fmt.Sprintf("START %s", name))
 
-			res, err := f(ctx, in)
+			res, err := next(ctx, in)
 
 			logger.Println(fmt.Sprintf("END %s", name))
 

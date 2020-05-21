@@ -49,6 +49,6 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 }
 
 func main() {
-	m := vesper.New(handler, correlationIdMiddleware, validationMiddleware, namedMiddleware("requestValidationMiddleware"), namedMiddleware("correlationIdMiddleware"))
+	m := vesper.New(handler, correlationIdMiddleware, validationMiddleware, fakeMiddleware("requestValidationMiddleware"), fakeMiddleware("correlationIdMiddleware"))
 	m.Start()
 }
