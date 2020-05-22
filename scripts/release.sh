@@ -79,17 +79,17 @@ function cleanup() {
 }
 
 step "Releasing Vesper 🚀 "
-log "Finding current version"
+log "finding current version"
 current_version=$(get_version)
 
 full_log=$(git log ${current_version}..HEAD)
 inc=$(determine_increment "${full_log}")
 version=$(increment_version "${current_version/v/}" "${inc}")
-log "Increment '${inc}' version from ${current_version} to ${version}"
+log "increment '${inc}' version from ${current_version} to ${version}"
 
 step "Generating changelog"
 generate_changelog "${current_version}"
-log "Changelog updated"
+log "changelog updated"
 
 step "Committing changes"
 log "unstaging files"
@@ -102,4 +102,4 @@ git commit -m "chore(release): release ${version}"
 step "Creating tag ${version}"
 git tag ${version} -m "chore(release): release ${version}"
 
-log "Done - check your git logs, CHANGELOG, and then run 'git push --follow-tags'."
+log "done - check your git logs, CHANGELOG, and then run 'git push --follow-tags'."
