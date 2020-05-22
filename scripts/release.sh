@@ -6,7 +6,6 @@ trap cleanup TERM
 date=$(date "+%d %B %Y")
 
 function step {
-  echo ""
   echo " -----> $1"
 }
 
@@ -16,7 +15,7 @@ function log {
 
 function get_version() {
   tag=` git tag -n1 | grep "chore(release)" | tail -n 1 | cut -d ' ' -f1`
-  echo "${tag/v/}"
+  echo "${tag}"
 }
 
 # usage: increment_version current_version major|minor|patch
@@ -60,14 +59,14 @@ function determine_increment() {
 }
 
 function generate_changelog() {
-  version=$1
-  log=$(git log --pretty=format:'  * [%h](https://github.com/pact-foundation/pact-go/commit/%h) - %s (%an, %ad)' v${version}..HEAD | egrep -v "wip(:|\()" | grep -v "docs(" | grep -v "chore(" | grep -v Merge | grep -v "test(")
+  release_version=$1
+  log=$(git log --pretty=format:'  * [%h](https://github.com/pact-foundation/pact-go/commit/%h) - %s (%an, %ad)' ${release_version}..HEAD | egrep -v "wip(:|\()" | grep -v "docs(" | grep -v "chore(" | grep -v Merge | grep -v "test(")
 
   log "Updating CHANGELOG.md"
   ed CHANGELOG.md << END
 7i
 
-### $version ($date)
+### $release_version ($date)
 $log
 .
 w
@@ -79,27 +78,28 @@ function cleanup() {
   log "ERROR generating release, please check your git logs and working tree to ensure things are in order."
 }
 
-step "Releasing Vesper"
+step "Releasing Vesper 🚀 "
 log "Finding current version"
 current_version=$(get_version)
 
-full_log=$(git log v${current_version}..HEAD)
-step=$(determine_increment "${full_log}")
-version=$(increment_version "${current_version}" "${step}")
-step "Increment '${step}' version from ${current_version} to ${version}"
+full_log=$(git log ${current_version}..HEAD)
+inc=$(determine_increment "${full_log}")
+version=$(increment_version "${current_version/v/}" "${inc}")
+log "Increment '${inc}' version from ${current_version} to ${version}"
 
 step "Generating changelog"
-# generate_changelog "${current_version}"
+generate_changelog "${current_version}"
 log "Changelog updated"
 
-# step "Committing changes"
-# git reset HEAD
-# git add CHANGELOG.md
-# git commit -m "chore(release): release ${version}"
+step "Committing changes"
+log "unstaging files"
+git reset HEAD
+log "adding CHANGELOG.md"
+git add CHANGELOG.md
+log "commiting"
+git commit -m "chore(release): release ${version}"
 
-# step "Creating tag ${version}"
-# git tag ${version} -m "chore(release): release ${version}"
+step "Creating tag ${version}"
+git tag ${version} -m "chore(release): release ${version}"
 
-# log "Done - check your git logs, CHANGELOG, and then run 'git push --follow-tags'."
-
-
+log "Done - check your git logs, CHANGELOG, and then run 'git push --follow-tags'."
