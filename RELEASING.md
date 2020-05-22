@@ -10,4 +10,29 @@ make release
 git push --follow-tags
 ```
 
+The whole process should look something like this:
+
+```
+➜  vesper git:(master) ✗ make release
+ -----> Releasing Vesper 🚀
+        Finding current version
+        Increment 'minor' version from v0.0.0 to v0.1.0
+ -----> Generating changelog
+        Updating CHANGELOG.md
+276
+1895
+        Changelog updated
+ -----> Committing changes
+        unstaging files
+Unstaged changes after reset:
+M	CHANGELOG.md
+M	scripts/release.sh
+        adding CHANGELOG.md
+        commiting
+[master 65bedf1] chore(release): release v0.1.0
+ 1 file changed, 12 insertions(+)
+ -----> Creating tag v0.1.0
+        Done - check your git logs, CHANGELOG, and then run 'git push --follow-tags'.
+```
+
 That's it! :)
