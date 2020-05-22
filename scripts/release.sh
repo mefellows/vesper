@@ -53,7 +53,7 @@ function determine_increment() {
   changelog=${1}
   step="patch"
   [[ "${1}" =~ (feat:|feat\() ]] && step="minor"
-  [[ "${1}" =~ (BREAKING|breaking) ]] && step="major"
+  [[ "${1}" =~ (BREAKING change|breaking change) ]] && step="major"
 
   echo $step
 }
