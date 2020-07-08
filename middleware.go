@@ -14,14 +14,13 @@ type LambdaFunc func(context.Context, interface{}) (interface{}, error)
 // take in one LambdaFunc and wrap it within another LambdaFunc
 type Middleware func(next LambdaFunc) LambdaFunc
 
-// buildChain builds the middlware chain recursively, functions are first class
+// buildChain builds the middlware chain, functions are first class
 func buildChain(f LambdaFunc, m ...Middleware) LambdaFunc {
-	// if our chain is done, use the original LambdaFunc
-	if len(m) == 0 {
-		return f
+	// build middleware chain in reverse order, if no middlewares provided returns f
+	for i := len(m) - 1; i >= 0; i-- {
+		f = m[i](f)
 	}
-	// otherwise nest the LambdaFuncs
-	return m[0](buildChain(f, m[1:]...))
+	return f
 }
 
 // newMiddlewareWrapper takes the middleware chain, and converts it into
